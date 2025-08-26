@@ -167,17 +167,14 @@ class MainPanel(wx.Panel):
         self.mode_record_button = ui.NoBorderBitmapToggle(
             self, playback_state=PlaybackState.RECORDING
         )
-        self.mode_record_button.SetSizeHints(52, 52)
         self.mode_record_button.SetToolTip("Recording")
         self.mode_playbacktracking_button = ui.NoBorderBitmapToggle(
             self, playback_state=PlaybackState.PLAYBACK_TRACK
         )
-        self.mode_playbacktracking_button.SetSizeHints(52, 52)
         self.mode_playbacktracking_button.SetToolTip("Playback Tracking")
         self.mode_playbacknotrack_button = ui.NoBorderBitmapToggle(
             self, playback_state=PlaybackState.PLAYBACK_NO_TRACK
         )
-        self.mode_playbacknotrack_button.SetSizeHints(52, 52)
         self.mode_playbacknotrack_button.SetToolTip("Playback No Track")
         self._mode_buttons: Collection[ui.NoBorderBitmapToggle] = (
             self.mode_record_button,
@@ -185,11 +182,11 @@ class MainPanel(wx.Panel):
             self.mode_playbacknotrack_button,
         )
         for button in self._mode_buttons:
-            mode_grid.Add(button)
+            mode_grid.Add(button, flag=wx.EXPAND)
 
         marker_button = ui.NoBorderBitmapButton(self, icon="marker")
         marker_button.SetToolTip("Drop Marker")
-        mode_grid.Add(marker_button)
+        mode_grid.Add(marker_button, flag=wx.EXPAND)
 
         attempt_reconnect_button = ui.NoBorderBitmapButton(self, icon="reconnect")
         attempt_reconnect_button.SetToolTip("Attempt Reconnect")
@@ -198,7 +195,7 @@ class MainPanel(wx.Panel):
             attempt_reconnect,
             attempt_reconnect_button,
         )
-        mode_grid.Add(attempt_reconnect_button)
+        mode_grid.Add(attempt_reconnect_button, flag=wx.EXPAND)
 
         panel_sizer.Add(mode_grid, flag=wx.EXPAND)
 
@@ -258,6 +255,11 @@ class MainPanel(wx.Panel):
                 self._mode_button_pressed,
                 button,
             )
+            self.Bind(
+                wx.EVT_TOGGLEBUTTON,
+                self._mode_button_pressed,
+                button,
+            )
         # Set Playback Tracking as the default state
         self.mode_playbacktracking_button.SetValue(True)
         # Subscribing to the OSC response for console name to reset the timeout timer
@@ -277,9 +279,9 @@ class MainPanel(wx.Panel):
         self.timer_lock = threading.Lock()
         self.configure_timers()
 
-    def _mode_button_pressed(self, event: wx.lib.buttons.GenButtonEvent) -> None:
+    def _mode_button_pressed(self, event: wx.CommandEvent) -> None:
         for button in self._mode_buttons:
-            if button is event.GetButtonObj() and event.GetIsDown():
+            if button is event.GetEventObject() and event.IsChecked():
                 button.Disable()
                 if button.playback_state is PlaybackState.RECORDING:
                     settings.marker_mode = "Recording"

@@ -38,6 +38,8 @@ MIDI_PORT_NONE = "None"
 
 PORT_STUDER_EMBER_RECEIVE = 49104
 
+WXPYTHON_USE_NATIVE_BUTTONS = False
+
 
 class PlaybackState(StrEnum):
     RECORDING = "recording"
