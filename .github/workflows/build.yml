@@ -3,6 +3,10 @@ name: Cross-Platform Build with PyInstaller
 # Call when commit is tagged with v*
 on:
   push:
+    branches:
+      - master
+      - dev
+      - studer-vista
     tags:
       - 'v*'
 
@@ -11,13 +15,23 @@ permissions:
 
 jobs:
   # Creates a release in Github
-  create_release:
-    name: Create Release
+  draft-release:
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     steps:
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+      - name: Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}-dev
+          draft: true
+          prerelease: false
+          generate_release_notes: false
+  full-release:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Full Release
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           draft: false
@@ -26,7 +40,7 @@ jobs:
 
   build:
     # When create_release is finished
-    needs: create_release
+    needs: [draft-release, full-release]
     strategy:
       matrix:
         # Building for Mac silicon, Mac Intel, and Windows
@@ -107,10 +121,10 @@ jobs:
           "@ | Out-File -FilePath .env -Encoding ASCII
         shell: pwsh
       # Build app with Pyinstaller on Mac
-      - name: Build with PyInstaller (MacOS)
+      - name: Build with Py2App (MacOS)
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          pyinstaller --clean --noconfirm DigiReaper.spec -- --mac_osx
+          python setup.py py2app
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
       # Build app with Pyinstaller on Windows

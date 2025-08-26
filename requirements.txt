@@ -17,6 +17,7 @@ pyinstaller-hooks-contrib==2025.4
 Pypubsub==4.0.3
 python-osc==1.9.3
 python-rtmidi==1.5.8
+py2app==0.28.8
 six==1.17.0
 wxPython==4.2.3
 # Keep this version of setuptools, needed for py2app currently
