@@ -145,8 +145,7 @@ jobs:
       - name: Codesign Application for Notarization
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          ls
-          cd /dist 
+          cd dist 
           codesign: codesign --deep --force --options runtime --timestamp \ --sign "Developer ID Application: Justin Stasiw(58W99XNX62)" \ "MarkerMatic.app"
 
       - name: Zip Application for Notarization
