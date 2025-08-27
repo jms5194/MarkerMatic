@@ -145,43 +145,43 @@ jobs:
       - name: Zip Application for Notarization
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          ditto -c -k --keepParent "dist/Digico-Reaper Link.app" "Digico-Reaper Link.zip"
+          ditto -c -k --keepParent "dist/MarkerMatic.app" "MarkerMatic.zip"
       # Send the application zip to Apple for Notarization and stapling
       - name: Notarize and Staple
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          xcrun notarytool submit "Digico-Reaper Link.zip" --apple-id \
+          xcrun notarytool submit "MarkerMatic.zip" --apple-id \
             "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
             "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
             "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
-          chmod 755 "dist/Digico-Reaper Link.app"
-          xcrun stapler staple "dist/Digico-Reaper Link.app"
+          chmod 755 "dist/MarkerMatic.app"
+          xcrun stapler staple "dist/MarkerMatic.app"
 
       - name: Verify Notarization
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          spctl -a -v "dist/Digico-Reaper Link.app"
-          rm "Digico-Reaper Link.zip"
+          spctl -a -v "dist/MarkerMatic.app"
+          rm "MarkerMatic.zip"
       # Build an installer DMG for MacOS
       - name: Create dmg MacOS
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          chmod a+x "dist/Digico-Reaper Link.app"
+          chmod a+x "dist/MarkerMatic.app"
           brew update
           brew install create-dmg
           create-dmg \
-          --volname "Digico-Reaper Link Installer" \
+          --volname "MarkerMatic Installer" \
           --app-drop-link 600 185 \
           --window-pos 200 120 \
           --window-size 800 400 \
-          --hide-extension "Digico-Reaper Link.app" \
-          "Digico-Reaper Link Installer"-${{ matrix.target }}.dmg \
-          "dist/Digico-Reaper Link.app"
+          --hide-extension "MarkerMatic.app" \
+          "MarkerMatic Installer"-${{ matrix.target }}.dmg \
+          "dist/MarkerMatic.app"
       # Zip the windows applications
       - name: Create zip on Windows
         if: matrix.os == 'windows-latest'
         run: |
-          Compress-Archive -Path "dist/Digico-Reaper Link.exe" -DestinationPath "./Digico-Reaper Link-win.zip"
+          Compress-Archive -Path "dist/MarkerMatic.exe" -DestinationPath "./MarkerMatic-win.zip"
         shell: pwsh
       # Add the built binaries to the release
       - name: Release
@@ -189,6 +189,6 @@ jobs:
         with:
           tag_name: ${{ needs.create_release.outputs.tag-name }}
           files: |
-            Digico-Reaper\ Link\ Installer-macos-arm64.dmg
-            Digico-Reaper\ Link\ Installer-macos-x86.dmg
-            Digico-Reaper\ Link-win.zip
+            MarkerMatic\ Installer-macos-arm64.dmg
+            MarkerMatic\ Installer-macos-x86.dmg
+            MarkerMatic-win.zip
