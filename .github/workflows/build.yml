@@ -34,7 +34,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          draft: false
+          draft: true
           prerelease: false
           generate_release_notes: false
 
@@ -204,6 +204,7 @@ jobs:
 
         with:
           tag_name: ${{ github.ref_name }}
+          draft: true
           files: |
             MarkerMatic\ Installer-macos-arm64.dmg
             MarkerMatic\ Installer-macos-x86.dmg
