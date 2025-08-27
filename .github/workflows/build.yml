@@ -16,7 +16,7 @@ permissions:
 jobs:
   # Creates a release in Github
   draft-release:
-    if: github.ref == 'refs/heads/dev' || github.ref == 'ref/heads/studer-vista'
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/studer-vista'
     runs-on: ubuntu-latest
     steps:
       - name: Draft Release
