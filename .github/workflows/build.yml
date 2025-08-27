@@ -194,7 +194,7 @@ jobs:
         uses: softprops/action-gh-release@v2
 
         with:
-          tag_name: ${{ needs.draft-release.outputs.tag-name }} or ${{ needs.full-release.outputs.tag-name }}
+          tag_name: ${{ needs.draft-release.outputs.tag-name }}
           files: |
             MarkerMatic\ Installer-macos-arm64.dmg
             MarkerMatic\ Installer-macos-x86.dmg
