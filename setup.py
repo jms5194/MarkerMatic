@@ -5,8 +5,17 @@ Usage:
     python setup.py py2app
 """
 
+from pathlib import Path
 from setuptools import setup
 import constants
+
+import google.protobuf
+
+# This is a dumb workaround because otherwise the protobuf library can't be loaded as a
+# package by py2app. See https://github.com/ronaldoussoren/py2app/issues/495
+google_folder = Path(google.protobuf.__file__).parent.parent
+Path.touch(google_folder / "__init__.py")
+Path.touch(google_folder / "_upb" / "__init__.py")
 
 APP = ["main.py"]
 DATA_FILES = []
@@ -31,6 +40,7 @@ OPTIONS = {
         "CFBundleVersion": constants.VERSION,
         "NSRequiresAquaSystemAppearance": False,
     },
+    "packages": ["google.protobuf", "google._upb"],
 }
 
 setup(
