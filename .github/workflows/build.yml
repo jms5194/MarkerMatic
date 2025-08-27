@@ -41,6 +41,11 @@ jobs:
   build:
     # When create_release is finished
     needs: [draft-release, full-release]
+    if: |
+      always()
+      && contains(needs.*.result, 'success')
+      && !contains(needs.*.result, 'failure')
+
     strategy:
       matrix:
         # Building for Mac silicon, Mac Intel, and Windows
