@@ -12,8 +12,6 @@ protobuf==5.26.1
 psutil==7.0.0
 py-ptsl==500.1.1
 py4j==0.10.9.9
-pyinstaller==6.13.0
-pyinstaller-hooks-contrib==2025.4
 Pypubsub==4.0.3
 python-osc==1.9.3
 python-rtmidi==1.5.8
