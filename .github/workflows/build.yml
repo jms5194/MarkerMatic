@@ -145,7 +145,27 @@ jobs:
       - name: Codesign Application for Notarization
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          cd dist 
+          cd dist
+          cd MarkerMatic.app/Contents/Resources/lib
+          cp -p python313.zip /tmp
+          ditto -x -k "/tmp/python313.zip" "/tmp/python313"
+          cd -
+          find "/tmp/python313" -iname '*.so' -or -iname '*.dylib' |
+          while read libfile; do
+            codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" \
+            --entitlements ../entitlements.plist \
+            --deep "${libfile}" \
+            --force \
+            --timestamp \
+            --options runtime;
+          done;
+          codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "/tmp/python313/PyInstaller/bootloader/Darwin-64bit/runw"
+          codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "/tmp/python313/PyInstaller/bootloader/Darwin-64bit/run_d"
+          codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "/tmp/python313/PyInstaller/bootloader/Darwin-64bit/run"
+          codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "/tmp/python313/PyInstaller/bootloader/Darwin-64bit/runw_d"
+          rm -vrf "/tmp/python313.zip"
+          ditto -c -k "/tmp/python313" "/tmp/python313.zip"
+          cp -p "/tmp/python313.zip" "MarkerMatic.app/Contents/Resources/lib"
           find "MarkerMatic.app" -iname '*.so' -or -iname '*.dylib' |
           while read libfile; do
             codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" \
