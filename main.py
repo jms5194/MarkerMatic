@@ -133,7 +133,7 @@ class MainWindow(wx.Frame):
             self._app_icons = wx.IconBundle(
                 os.path.abspath(
                     os.path.join(
-                        utilities.get_resources_directory_path(), "rprdigi.ico"
+                        utilities.get_resources_directory_path(), "markermaticicon.ico"
                     )
                 ),
                 wx.BITMAP_TYPE_ICO,
