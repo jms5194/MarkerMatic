@@ -23,7 +23,7 @@ OPTIONS = {
     "iconfile": "resources/rprdigi.icns",
     "resources": [
         "resources/icons",
-        "resources/rprdigi.ico",
+        "resources/markermaticicon.ico",
         "resources/MarkerMatic-Bridge.bwextension",
     ],
     "includes": ["mido.backends.portmidi"],

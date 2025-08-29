@@ -133,14 +133,14 @@ jobs:
           cd dist
           find "MarkerMatic.app" -iname '*.so' -or -iname '*.dylib' |
           while read libfile; do
-            codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" \
+            codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
             --entitlements ../entitlements.plist \
             --deep "${libfile}" \
             --force \
             --timestamp \
             --options runtime;
           done;
-          codesign -s "Developer ID Application: Justin Stasiw (58W99XNX62)" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "MarkerMatic.app" 
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "MarkerMatic.app" 
           codesign --verify --verbose=4 "MarkerMatic.app"
       - name: Zip Application for Notarization
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')

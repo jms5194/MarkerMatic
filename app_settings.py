@@ -27,7 +27,7 @@ class ThreadSafeSettings:
             "console_type": DiGiCo.type,
             "daw_type": Reaper.type,
             "always_on_top": False,
-            "mmc_control_enabled": True,
+            "mmc_control_enabled": False,
             "external_control_osc_port": 49103,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
         }
