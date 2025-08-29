@@ -3,10 +3,6 @@ name: Cross-Platform Build with PyInstaller
 # Call when commit is tagged with v*
 on:
   push:
-    branches:
-      - master
-      - dev
-      - studer-vista
     tags:
       - "v*"
 
@@ -15,36 +11,23 @@ permissions:
 
 jobs:
   # Creates a release in Github
-  draft-release:
-    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/studer-vista'
+  create_release:
+    name: Create Release
     runs-on: ubuntu-latest
     steps:
-      - name: Draft Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ github.ref_name }}-dev
-          draft: true
-          prerelease: false
-          generate_release_notes: false
-  full-release:
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Full Release
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
           name: ${{ github.ref_name }}
           draft: true
           prerelease: false
           generate_release_notes: false
 
+
   build:
     # When create_release is finished
-    needs: [draft-release, full-release]
-    if: |
-      always()
-      && contains(needs.*.result, 'success')
-      && !contains(needs.*.result, 'failure')
+    needs: create_release
 
     strategy:
       matrix:
@@ -205,7 +188,7 @@ jobs:
         uses: softprops/action-gh-release@v2
 
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{needs.create_release.outputs.tag_name}}
           draft: true
           files: |
             MarkerMatic\ Installer-macos-arm64.dmg
