@@ -20,7 +20,7 @@ Path.touch(google_folder / "_upb" / "__init__.py")
 APP = ["main.py"]
 DATA_FILES = []
 OPTIONS = {
-    "iconfile": "resources/rprdigi.icns",
+    "iconfile": "resources/markermaticicon.icns",
     "resources": [
         "resources/icons",
         "resources/markermaticicon.ico",
