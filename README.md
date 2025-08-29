@@ -5,7 +5,7 @@ A tool to automate cueing and marker placement between consoles and digital audi
 
 This project was previously known as Digico-Reaper Link, but has since grown to support five different families of consoles, and four different DAWs. Documentation and more can be found [on the project's website][website].
 
-<img alt="A screenshot of the main window of MarkerMatic, showing the control buttons along the top of the window, then the connection statuses to the console and DAW at the bottom" srcset="https://markermatic.com/assets/main-window.png 2x">
+<img width="442" height="346" alt="A screenshot of the main window of MarkerMatic, showing the control buttons along the top of the window, then the connection statuses to the console and DAW at the bottom" src="https://github.com/user-attachments/assets/71cad0ca-2525-488e-b63b-f51160c35dcd" />
 
 If you find MarkerMatic useful, please consider becoming a GitHub Sponsor or donating on Ko-fi:
 
