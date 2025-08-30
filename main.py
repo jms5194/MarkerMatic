@@ -896,6 +896,8 @@ if __name__ == "__main__":
     try:
         logger.info(f"Starting {constants.APPLICATION_NAME} Application")
         app = wx.App(False)
+        app.SetAppName(constants.APPLICATION_NAME)
+        app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
         app.MainLoop()
     except Exception as e:
