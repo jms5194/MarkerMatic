@@ -1,4 +1,4 @@
-# MarkerMatic
+# <img height="38" align="left" src="assets/icon.png" alt="The MarkerMatic icon: A white letter M with the playhead splitting down the center, and into a waveform at the bottom"/>MarkerMatic
 A tool to automate cueing and marker placement between consoles and digital audio workstations (DAWs), primarily used for multitrack recordings. 
 * [Project Website][website]
 * [Latest Release][latest-release]

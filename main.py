@@ -79,14 +79,10 @@ class MainWindow(wx.Frame):
 
         self.Show()
 
-    def on_about(self, event):
+    def on_about(self, _):
         info = wx.adv.AboutDialogInfo()
-        info.SetName(constants.APPLICATION_NAME)
         info.SetVersion(constants.VERSION)
-        info.SetDescription(constants.APPLICATION_DESCRIPTION)
         info.SetCopyright(constants.APPLICATION_COPYRIGHT)
-        info.SetLicence(constants.CREDITS)
-        info.SetWebSite(constants.WEBSITE, "Website")
         wx.adv.AboutBox(info, self)
 
     def launch_preferences(self, event):
@@ -899,6 +895,7 @@ if __name__ == "__main__":
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
+        app.SetTopWindow(frame)
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)
