@@ -28,7 +28,6 @@ datas = [
 ]
 
 
-numpy_datas, numpy_binaries, numpy_hiddenimports = collect_all("numpy")
 ws_hiddenimports = ["websockets", "websockets.legacy"]
 py4j_hiddenimports = ["py4j.java_collections"]
 
@@ -37,7 +36,7 @@ a = Analysis(
     pathex=[],
     binaries=numpy_binaries,
     datas=datas + numpy_datas,
-    hiddenimports=numpy_hiddenimports + ws_hiddenimports + py4j_hiddenimports,
+    hiddenimports=ws_hiddenimports + py4j_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

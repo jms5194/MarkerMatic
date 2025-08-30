@@ -26,7 +26,6 @@ OPTIONS = {
         "resources/markermaticicon.ico",
         "resources/MarkerMatic-Bridge.bwextension",
     ],
-    "includes": ["mido.backends.portmidi"],
     "excludes": ["pyinstaller", "pyinstaller-hooks-contrib"],
     "dylib_excludes": [
         "/Library/Frameworks/Python.framework/Versions/3.13/Frameworks/Tcl.framework",

@@ -62,6 +62,7 @@ jobs:
         run: |
           python - pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
       # Bring in our apple certificate to the keychain of the runner
       - name: Import Apple Certificate
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
