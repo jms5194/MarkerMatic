@@ -1,4 +1,4 @@
-name: Cross-Platform Build with PyInstaller
+name: Cross-Platform Build with Py2App and Pyinstaller
 
 # Call when commit is tagged with v*
 on:
