@@ -42,12 +42,11 @@ class StuderVista(Console):
                     self._client_socket.connect(
                         (settings.console_ip, settings.console_port)
                     )
-                    logger.info(f"Connected to {self.type}")
-                except (OSError, TimeoutError, ConnectionRefusedError):
-                    # There's got to be a better way to get to the outer sleep
+                except Exception:
                     logger.warning(f"Could not connect to {self.type}")
                     time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
                     continue
+                logger.info(f"Connected to {self.type}")
                 self._client_socket.settimeout(constants.MESSAGE_TIMEOUT_SECONDS)
                 self._send_subscribe()
                 while not self._shutdown_server_event.is_set():
@@ -72,6 +71,7 @@ class StuderVista(Console):
                                 PyPubSubTopics.HANDLE_CUE_LOAD, cue=decoded_message
                             )
             time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+        logger.info(f"Closing connection to {self.type}")
 
     def _decode_message(self, value: Any) -> List[str]:
         message_string: List[str] = []
