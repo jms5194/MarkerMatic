@@ -8,7 +8,7 @@ DAWS = {
     "Reaper": Reaper,
     "ProTools": ProTools,
     "Ardour": Ardour,
-    "Bitwig": Bitwig,
+    "Bitwig Studio": Bitwig,
 }
 
 

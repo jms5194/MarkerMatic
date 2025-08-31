@@ -455,9 +455,12 @@ class PrefsPanel(wx.Panel):
         console_types = list(CONSOLES)
         console_types.sort()
         self.console_type_choice = wx.Choice(self, choices=console_types)
-        self.console_type_choice.SetSelection(
-            console_types.index(settings.console_type)
-        )
+        try:
+            self.console_type_choice.SetSelection(
+                console_types.index(settings.console_type)
+            )
+        except ValueError:
+            logger.error("Tried to load a console that isn't available")
         console_main_section.Add(
             self.console_type_choice, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
@@ -604,7 +607,10 @@ class PrefsPanel(wx.Panel):
         daw_types = [daw.type for daw in Daw.__subclasses__()]
         daw_types.sort()
         self.daw_type_choice = wx.Choice(self, choices=daw_types)
-        self.daw_type_choice.SetSelection(daw_types.index(settings.daw_type))
+        try:
+            self.daw_type_choice.SetSelection(daw_types.index(settings.daw_type))
+        except ValueError:
+            logger.error("Tried to load a DAW that isn't available")
         daw_section.Add(self.daw_type_choice, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
         panel_sizer.Add(
             daw_section,
