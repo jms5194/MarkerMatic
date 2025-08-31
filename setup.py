@@ -39,6 +39,8 @@ OPTIONS = {
         "CFBundleShortVersionString": constants.VERSION,
         "CFBundleVersion": constants.VERSION,
         "NSRequiresAquaSystemAppearance": False,
+        "NSDocumentsFolderUsageDescription": f"{constants.APPLICATION_NAME} needs to install a Bitwig Studio extension to connect",
+        "NSLocalNetworkUsageDescription": f"{constants.APPLICATION_NAME} communicates with your console to detect cue loads",
     },
     "packages": ["google.protobuf", "google._upb"],
 }
