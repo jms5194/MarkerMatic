@@ -6,6 +6,7 @@ prettytable==3.16.0
 py2app==0.28.8
 pyinstaller==6.15.0
 pyinstaller-hooks-contrib==2025.8
-setuptools==80.9.0
+# Keep this version of setuptools, needed for py2app currently
+setuptools==70.3.0
 tomli==2.2.1
 wcwidth==0.2.13

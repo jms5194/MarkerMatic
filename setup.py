@@ -8,7 +8,7 @@ Usage:
 from pathlib import Path
 from setuptools import setup
 import constants
-
+import sys
 import google.protobuf
 
 # This is a dumb workaround because otherwise the protobuf library can't be loaded as a
@@ -20,6 +20,7 @@ Path.touch(google_folder / "_upb" / "__init__.py")
 APP = ["main.py"]
 DATA_FILES = []
 OPTIONS = {
+    "argv_emulation": False,
     "iconfile": "resources/markermaticicon.icns",
     "resources": [
         "resources/icons",
@@ -28,8 +29,8 @@ OPTIONS = {
     ],
     "excludes": ["pyinstaller", "pyinstaller-hooks-contrib"],
     "dylib_excludes": [
-        "/Library/Frameworks/Python.framework/Versions/3.13/Frameworks/Tcl.framework",
-        "/Library/Frameworks/Python.framework/Versions/3.13/Frameworks/Tk.framework",
+        f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/Frameworks/Tcl.framework",
+        f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/Frameworks/Tk.framework",
     ],
     "plist": {
         "CFBundleIdentifier": constants.BUNDLE_IDENTIFIER,
