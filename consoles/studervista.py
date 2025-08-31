@@ -37,7 +37,7 @@ class StuderVista(Console):
                 try:
                     self._client_socket.settimeout(constants.CONNECTION_TIMEOUT_SECONDS)
                     self._client_socket.bind(
-                        ("0.0.0.0", constants.PORT_STUDER_EMBER_RECEIVE)
+                        (constants.IP_OUTBOUND_ANY, constants.PORT_STUDER_EMBER_RECEIVE)
                     )
                     self._client_socket.connect(
                         (settings.console_ip, settings.console_port)
