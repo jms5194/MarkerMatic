@@ -102,30 +102,32 @@ class MainWindow(wx.Frame):
                 icons=self.get_app_icons(),
             )
 
-    def on_close(self, event: wx.CloseEvent):
-        # Let's close the window and destroy the UI
-        # But let's remember where we left the window for next time
-        logger.info("Closing Application")
+    def on_close(self, event: wx.CloseEvent | wx.CommandEvent):
+        """Handle application shutdown requests from the UI,
+        and prompt to confirm if we're able to"""
         cur_pos = self.GetTopLevelParent().GetPosition()
         self.BridgeFunctions.update_pos_in_config(cur_pos)
-        # Make a dialog to confirm closing.
-        
-        if event.CanVeto():
-            event.dlg = wx.MessageDialog(
-            self,
-            f"Do you really want to close {constants.APPLICATION_NAME}?",
-            "Confirm Exit",
-            wx.OK | wx.CANCEL | wx.ICON_QUESTION,
-        )
-        result = dlg.ShowModal()
-        dlg.Destroy()
-        if result == wx.ID_OK:
-            closed_complete = self.GetTopLevelParent().BridgeFunctions.close_servers()
-            if closed_complete:
-                try:
-                    self.GetTopLevelParent().Destroy()
-                except Exception as e:
-                    logger.error(f"Error closing application: {e}")
+
+        if isinstance(event, wx.CommandEvent) or event.CanVeto():
+            logger.info("Confirming if the user would like to close")
+            dlg = wx.MessageDialog(
+                self,
+                f"Do you really want to close {constants.APPLICATION_NAME}?",
+                "Confirm Exit",
+                wx.OK | wx.CANCEL | wx.ICON_QUESTION,
+            )
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            if result != wx.ID_OK:
+                if isinstance(event, wx.CloseEvent):
+                    event.Veto()
+                return
+        closed_complete = self.BridgeFunctions.close_servers()
+        if closed_complete:
+            try:
+                self.GetTopLevelParent().Destroy()
+            except Exception as e:
+                logger.error(f"Error closing application: {e}")
 
     def update_display_settings(self) -> None:
         if settings.always_on_top:
