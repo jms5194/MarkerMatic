@@ -85,23 +85,33 @@ class MainWindow(wx.Frame):
         info.SetCopyright(constants.APPLICATION_COPYRIGHT)
         wx.adv.AboutBox(info, self)
 
-    def launch_preferences(self, event):
-        # Open the preferences frame
-        PrefsWindow(
-            parent=wx.GetTopLevelParent(self),
-            title=f"{constants.APPLICATION_NAME} Preferences",
-            console=self.GetTopLevelParent().BridgeFunctions.console,
-            icons=self.GetTopLevelParent().get_app_icons(),
-        )
+    def launch_preferences(self, _: Optional[wx.CommandEvent] = None):
+        """Launch the preferences window, if it's not visible.
+        Otherwise bring it to the front"""
+        if hasattr(self, "_preferences_window"):
+            try:
+                self._preferences_window.Raise()
+            except RuntimeError:
+                del self._preferences_window
+                self.launch_preferences()
+        else:
+            self._preferences_window = PrefsWindow(
+                parent=wx.GetTopLevelParent(self),
+                title=f"{constants.APPLICATION_NAME} Preferences",
+                console=self.BridgeFunctions.console,
+                icons=self.get_app_icons(),
+            )
 
-    def on_close(self, event):
+    def on_close(self, event: wx.CloseEvent):
         # Let's close the window and destroy the UI
         # But let's remember where we left the window for next time
         logger.info("Closing Application")
         cur_pos = self.GetTopLevelParent().GetPosition()
-        self.GetTopLevelParent().BridgeFunctions.update_pos_in_config(cur_pos)
+        self.BridgeFunctions.update_pos_in_config(cur_pos)
         # Make a dialog to confirm closing.
-        dlg = wx.MessageDialog(
+        
+        if event.CanVeto():
+            event.dlg = wx.MessageDialog(
             self,
             f"Do you really want to close {constants.APPLICATION_NAME}?",
             "Confirm Exit",
