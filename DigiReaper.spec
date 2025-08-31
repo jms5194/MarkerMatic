@@ -34,8 +34,8 @@ py4j_hiddenimports = ["py4j.java_collections"]
 a = Analysis(
     ["main.py"],
     pathex=[],
-    binaries=numpy_binaries,
-    datas=datas + numpy_datas,
+    binaries=[],
+    datas=datas,
     hiddenimports=ws_hiddenimports + py4j_hiddenimports,
     hookspath=[],
     hooksconfig={},
