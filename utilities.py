@@ -117,7 +117,7 @@ class DawConsoleBridge:
             pass
         try:
             if not updater.has_section("main"):
-                print("Adding main section")
+                logger.info("Adding main section to config file")
                 updater.add_section("main")
             updater["main"]["default_ip"] = con_ip
             updater["main"]["repeater_ip"] = rptr_ip
@@ -155,7 +155,7 @@ class DawConsoleBridge:
             pass
         try:
             if not updater.has_section("main"):
-                print("Adding main section")
+                logger.info("Adding main section to config file")
                 updater.add_section("main")
             updater.set("main", "window_pos_x", str(win_pos_tuple[0]))
             updater.set("main", "window_pos_y", str(win_pos_tuple[1]))

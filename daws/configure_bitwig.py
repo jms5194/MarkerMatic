@@ -1,19 +1,20 @@
+import hashlib
+import os
 import pathlib
 import shutil
 import sys
-from logger_config import logger
-import hashlib
-import os
+
 import utilities
+from logger_config import logger
 
 
 def verify_markermatic_bridge_in_user_dir():
     # Copy the Markermatic Bridge to the Bitwig extensions directory
     bridge_full_path = get_bitwig_extensions_path() / "MarkerMatic-Bridge.bwextension"
-    print(bridge_full_path)
+    logger.info(f"Checking for the Bitwig Studio extension at {bridge_full_path}")
     source_loc = pathlib.Path(utilities.get_resources_directory_path())
     source_path = source_loc / "MarkerMatic-Bridge.bwextension"
-    
+
     if os.path.exists(get_bitwig_extensions_path()):
         if os.path.exists(bridge_full_path):
             current_file_checksum = calculate_md5_checksum(bridge_full_path)

@@ -6,6 +6,7 @@ from pubsub import pub
 from pythonosc import udp_client
 
 from constants import PyPubSubTopics
+from logger_config import logger
 
 from . import Console, Feature
 
@@ -105,7 +106,7 @@ class BehringerX32(Console):
         cue_type: List[BehringerX32ShowControlMode],
         cue_name: str,
     ) -> None:
-        print(cue_name, cue_type[0], cue_name)
+        logger.info(f"Received a {cue_type[0]} named {cue_name}")
         self._message_received()
         if cue_type[0] is self._show_control_mode and self._cue_number != -1:
             pub.sendMessage(

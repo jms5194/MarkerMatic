@@ -7,6 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 import time
 
+
 def backup_config_file(config_file_path):
     # Backup config state before this software modified it.
     config_file_path = config_file_path + "/" + "config"
@@ -42,13 +43,15 @@ def osc_interface_exists(resource_path):
     config = ET.parse(os.path.join(resource_path, "config"))
     root = config.getroot()
     try:
-        osc_config = root.find("./ControlProtocols/Protocol[@name='Open Sound Control (OSC)']")
+        osc_config = root.find(
+            "./ControlProtocols/Protocol[@name='Open Sound Control (OSC)']"
+        )
     except xml.etree.ElementTree.ParseError as e:
         logger.error(f"Error parsing Ardour config: {e}")
         return False
     assert isinstance(osc_config, xml.etree.ElementTree.Element)
     try:
-        if (osc_config.attrib["active"] == "1"):
+        if osc_config.attrib["active"] == "1":
             return True
         else:
             logger.info("OSC interface is not active")

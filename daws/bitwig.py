@@ -104,7 +104,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -119,7 +119,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -139,7 +139,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -174,7 +174,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -222,7 +222,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -237,7 +237,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -251,7 +251,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
@@ -271,7 +271,7 @@ class Bitwig(Daw):
             Py4JJavaError,
             ConnectionRefusedError,
             IndexError,
-        ) as e:
+        ):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 

@@ -1,15 +1,16 @@
-from . import Daw, configure_ardour
-from pubsub import pub
-from logger_config import logger
-from pythonosc import dispatcher, osc_server, udp_client
-from typing import Any, Callable
 import threading
 import time
-from constants import PlaybackState, TransportAction
-import wx
-from constants import PyPubSubTopics
+from typing import Any, Callable
+
 import psutil
-import os
+import wx
+from pubsub import pub
+from pythonosc import dispatcher, osc_server, udp_client
+
+from constants import PlaybackState, PyPubSubTopics, TransportAction
+from logger_config import logger
+
+from . import Daw, configure_ardour
 
 
 class Ardour(Daw):
@@ -48,24 +49,27 @@ class Ardour(Daw):
         # Check if OSC is turned on in Ardour's config file.
         # If not, enable it and restart Ardour.
         try:
-            if not configure_ardour.osc_interface_exists(configure_ardour.get_resource_path(True)):
+            if not configure_ardour.osc_interface_exists(
+                configure_ardour.get_resource_path(True)
+            ):
                 try:
                     configure_ardour.get_ardour_process_path()
-                    pub.sendMessage(PyPubSubTopics.REQUEST_DAW_RESTART, daw_name="Ardour")
+                    pub.sendMessage(
+                        PyPubSubTopics.REQUEST_DAW_RESTART, daw_name="Ardour"
+                    )
                     enable_osc_thread = threading.Thread(
                         target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),)
+                        args=(configure_ardour.get_resource_path(True),),
                     )
                     enable_osc_thread.start()
                 except RuntimeError:
                     enable_osc_thread = threading.Thread(
                         target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),)
+                        args=(configure_ardour.get_resource_path(True),),
                     )
                     enable_osc_thread.start()
         except Exception as e:
             logger.error(f"Error validating Ardour preferences: {e}")
-
 
     def _receive_ardour_OSC(self):
         # Receives and distributes OSC from Ardour, based on matching OSC values
@@ -180,27 +184,28 @@ class Ardour(Daw):
 
     def _goto_marker_by_name(self, marker_name):
         from app_settings import settings
+
         if settings.name_only_match:
             self._get_open_files_for_ardour()
         else:
             with self.ardour_send_lock:
                 self.ardour_client.send_message("/marker", marker_name)
 
-    def get_marker_id_by_name(self,name):
+    def get_marker_id_by_name(self, name):
         pass
 
     def _get_open_files_for_ardour(self):
+        # TODO: find a way to match that
         process_name = "Ardour8"
         open_files = []
-        for proc in psutil.process_iter(['pid', 'name', 'open_files']):
+        for proc in psutil.process_iter(["pid", "name", "open_files"]):
             try:
-                if proc.info['name'] == process_name:
-                    for f in proc.info['open_files']:
+                if proc.info["name"] == process_name:
+                    for f in proc.info["open_files"]:
                         open_files.append(f.path)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
-        print(open_files)
-        
+        logger.debug(f"Ardour process open files: {open_files}")
 
     def _place_marker_with_name(self, marker_name):
         with self.ardour_send_lock:

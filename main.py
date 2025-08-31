@@ -99,7 +99,6 @@ class MainWindow(wx.Frame):
         # But let's remember where we left the window for next time
         logger.info("Closing Application")
         cur_pos = self.GetTopLevelParent().GetPosition()
-        cur_size = self.GetTopLevelParent().GetSize()
         self.GetTopLevelParent().BridgeFunctions.update_pos_in_config(cur_pos)
         # Make a dialog to confirm closing.
         dlg = wx.MessageDialog(

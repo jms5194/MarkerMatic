@@ -221,7 +221,7 @@ class DiGiCo(Console):
             if int(self.requested_macro_num) == int(args[0]):
                 macro_name = args[1]
                 macro_name = str(macro_name).lower()
-                print(macro_name)
+                logger.info(f"Macro {macro_name} received")
                 if macro_name in (
                     "daw,rec",
                     "daw, rec",

@@ -114,7 +114,6 @@ class ProTools(Daw):
                 name_to_match = name_to_match.split(" ")
                 name_to_match = name_to_match[1:]
                 name_to_match = " ".join(name_to_match)
-                print(name_to_match)
             with self.pt_send_lock:
                 mem_locs = self.pt_engine_connection.get_memory_locations()
                 for pt.MemoryLocation in mem_locs:
