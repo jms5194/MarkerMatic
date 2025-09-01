@@ -123,9 +123,9 @@ jobs:
           pip install pyinstaller==6.13.0
           pip install pyinstaller-hooks-contrib==2025.4
           if ("${{ github.event_name }}" -eq "pull_request") {
-            pyinstaller --clean --noconfirm DigiReaper.spec -- --win --debug
+            pyinstaller --clean --noconfirm pyinstaller.spec -- --debug
           } else {
-            pyinstaller --clean --noconfirm DigiReaper.spec -- --win
+            pyinstaller --clean --noconfirm pyinstaller.spec --
           }
 
       - name: Codesign Application for Notarization
