@@ -39,6 +39,7 @@ class Yamaha(Console):
     type = "Yamaha"
     supported_features = [Feature.CUE_NUMBER]
     _client_socket: socket.socket
+    _connection_established = threading.Event()
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -49,6 +50,7 @@ class Yamaha(Console):
         from app_settings import settings
 
         while not self._shutdown_server_event.is_set():
+            self._connection_established.clear()
             with socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM
             ) as self._client_socket:
@@ -65,6 +67,7 @@ class Yamaha(Console):
                 pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
                 self._client_socket.settimeout(constants.MESSAGE_TIMEOUT_SECONDS)
                 buff = Buffer(self._client_socket, self._shutdown_server_event)
+                self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
                     line = buff.get_line()
                     if line is None:
@@ -91,4 +94,9 @@ class Yamaha(Console):
         logger.info(f"Closing connection to {self.type}")
 
     def heartbeat(self) -> None:
-        pass
+        if hasattr(self, "_client_socket") and self._connection_established.is_set():
+            try:
+                self._client_socket.sendall(b"\x0a")
+                pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
+            except OSError:
+                pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
