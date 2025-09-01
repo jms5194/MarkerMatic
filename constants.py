@@ -11,12 +11,13 @@ APPLICATION_COPYRIGHT = "© {} Justin Stasiw and Liam Steckler".format(
     datetime.datetime.now().year
 )
 BUNDLE_IDENTIFIER = "com.justinstasiw.markermatic"
-CREDITS = "Solar Icons by 480 Design is licensed under CC BY 4.0"
 CONFIG_FILENAME = "settings.ini"
 CONFIG_FILENAME_LEGACY = "settingsV3.ini"
 LOG_FILENAME = "MarkerMatic.log"
 VERSION = "4.0.0"
 WEBSITE = "https://markermatic.com"
+WEBSITE_DOCUMENTATION = "https://markermatic.com/docs"
+WEBSITE_LICENSE = "https://markermatic.com/license"
 
 CONNECTION_RECONNECTION_DELAY_SECONDS = 5
 CONNECTION_TIMEOUT_SECONDS = 2

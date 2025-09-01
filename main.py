@@ -2,6 +2,7 @@ import ipaddress
 import os.path
 import platform
 import threading
+import webbrowser
 from typing import Collection, Optional
 
 import wx
@@ -56,18 +57,30 @@ class MainWindow(wx.Frame):
         else:
             main_menu = wx.Menu()
         preferences_menuitem = main_menu.Prepend(wx.ID_PREFERENCES)
-        main_menu.PrependSeparator()
-        about_menuitem = main_menu.Prepend(wx.ID_ABOUT)
-        if platform.system() != "Darwin":
+        if platform.system() == "Darwin":
+            main_menu.PrependSeparator()
+            about_menuitem = main_menu.Prepend(wx.ID_ABOUT)
+        else:
             main_menu.AppendSeparator()
             menu_exit = main_menu.Append(wx.ID_EXIT)
             self.Bind(wx.EVT_MENU, self.on_close, menu_exit)
             menu_bar.Append(main_menu, "&File")
+        help_menu = wx.Menu()
+        if platform.system() != "Darwin":
+            about_menuitem = help_menu.Prepend(wx.ID_ABOUT)
+            help_menu.AppendSeparator()
+        documentation_menuitem = help_menu.Append(wx.ID_ANY, "&Documentation")
+        help_menu.AppendSeparator()
+        license_menuitem = help_menu.Append(wx.ID_ANY, "&License && Thanks")
+        menu_bar.Append(help_menu, "&Help")
+
         self.SetMenuBar(menu_bar)
 
         # Main Window Bindings
         self.Bind(wx.EVT_MENU, self.on_about, about_menuitem)
-        self.Bind(wx.EVT_MENU, self.launch_preferences, preferences_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_documentation, documentation_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_license, license_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_preferences, preferences_menuitem)
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
         pub.subscribe(
@@ -79,21 +92,31 @@ class MainWindow(wx.Frame):
 
         self.Show()
 
-    def on_about(self, _):
+    def on_about(self, _) -> None:
+        """Show the About dialog"""
         info = wx.adv.AboutDialogInfo()
         info.SetVersion(constants.VERSION)
         info.SetCopyright(constants.APPLICATION_COPYRIGHT)
         wx.adv.AboutBox(info, self)
 
-    def launch_preferences(self, _: Optional[wx.CommandEvent] = None):
+    def on_documentation(self, _) -> None:
+        """Launch the documentation page in the user's web browser"""
+        webbrowser.open(constants.WEBSITE_DOCUMENTATION)
+
+    def on_license(self, _) -> None:
+        """Launch the license page in the user's web browser"""
+        webbrowser.open(constants.WEBSITE_LICENSE)
+
+    def on_preferences(self, _: Optional[wx.CommandEvent] = None):
         """Launch the preferences window, if it's not visible.
         Otherwise bring it to the front"""
         if hasattr(self, "_preferences_window"):
             try:
                 self._preferences_window.Raise()
             except RuntimeError:
+                # If the preferences window was previously closed
                 del self._preferences_window
-                self.launch_preferences()
+                self.on_preferences()
         else:
             self._preferences_window = PrefsWindow(
                 parent=wx.GetTopLevelParent(self),
