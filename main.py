@@ -403,7 +403,7 @@ class MainPanel(wx.Panel):
         ):
             wx.CallAfter(self.console_timeout_timer.Stop)
         self.configure_timers()
-        self.update_console_connection_status(connected=True, console_name=consolename)
+        wx.CallAfter(self.update_console_connection_status, True, consolename)
 
     def call_for_daw_reset(self, daw_name: str):
         logger.info(f"{daw_name} has been auto configured. Requesting restart")

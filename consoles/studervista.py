@@ -18,6 +18,9 @@ class StuderVista(Console):
     type = "Studer Vista"
     supported_features = []
     _client_socket: socket.socket
+    _connection_established = threading.Event()
+    # TODO: Once we rework heartbeat to be more like DAW connecion checks,
+    # we can likely remove this event
     _received_real_data = threading.Event()
 
     def start_managed_threads(
@@ -31,6 +34,7 @@ class StuderVista(Console):
         from app_settings import settings
 
         while not self._shutdown_server_event.is_set():
+            self._connection_established.clear()
             with socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM
             ) as self._client_socket:
@@ -49,6 +53,7 @@ class StuderVista(Console):
                 logger.info(f"Connected to {self.type}")
                 self._client_socket.settimeout(constants.MESSAGE_TIMEOUT_SECONDS)
                 self._send_subscribe()
+                self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
                     try:
                         result_bytes = self._client_socket.recv(4096)
@@ -63,6 +68,9 @@ class StuderVista(Console):
                     _, value = decoder.read()
                     decoded_message = self._decode_message(value)
                     if decoded_message:
+                        logger.info(
+                            f"Received a message from {self.type}, connection is healthy"
+                        )
                         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
                         self._received_real_data.set()
                         if decoded_message != "Last Recalled Snapshot":
@@ -88,7 +96,7 @@ class StuderVista(Console):
         )
 
     def heartbeat(self) -> None:
-        if hasattr(self, "_client_socket"):
+        if hasattr(self, "_client_socket") and self._connection_established.is_set():
             try:
                 if self._received_real_data.is_set():
                     self._client_socket.sendall(
@@ -96,6 +104,9 @@ class StuderVista(Console):
                     )
                     pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
                 else:
+                    logger.info(
+                        f"Re-sending the {self.type} subscription request from the heartbeat"
+                    )
                     self._send_subscribe()
                     # TODO: Re-implement with a starting/connecting status
                     # pub.sendMessage(
