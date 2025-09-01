@@ -5,6 +5,7 @@ from typing import Any, Callable
 from pubsub import pub
 from pythonosc import udp_client
 
+import constants
 from constants import PyPubSubTopics
 
 from . import Console, Feature
@@ -40,9 +41,9 @@ class BehringerXAir(Console):
                 self._client.send_message("/xinfo", None)
                 self._client.send_message("/xremotenfb", None)
                 while not self._shutdown_server_event.is_set():
-                    self._client.handle_messages(1)
+                    self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
-                time.sleep(5)
+                time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _snapshot_name_received(self, _address: str, snapshot_name: str) -> None:
         self._snapshot_name = snapshot_name

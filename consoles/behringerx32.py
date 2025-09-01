@@ -5,6 +5,7 @@ from typing import Any, Callable, List
 from pubsub import pub
 from pythonosc import udp_client
 
+import constants
 from constants import PyPubSubTopics
 from logger_config import logger
 
@@ -60,9 +61,9 @@ class BehringerX32(Console):
             try:
                 self.heartbeat()
                 while not self._shutdown_server_event.is_set():
-                    self._client.handle_messages(1)
+                    self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
-                time.sleep(5)
+                time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _show_control_mode_received(
         self, _address: str, show_control_mode: int
