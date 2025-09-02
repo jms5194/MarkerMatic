@@ -1,29 +1,35 @@
+import configparser
 import threading
 from configparser import ConfigParser
 
+import constants
 from consoles import DiGiCo
 from daws import Reaper
+from logger_config import logger
+
 
 class ThreadSafeSettings:
     def __init__(self):
         self._lock = threading.Lock()
         self._settings = {
-            'console_ip' : "10.10.10.1",
-            'reaper_ip' : "127.0.0.1",
-            'repeater_ip' : "10.10.10.10",
-            'repeater_port' : 9999,
-            'repeater_receive_port' : 9998,
-            'reaper_port' : 49102,
-            'reaper_receive_port' : 49101,
-            'console_port' : 8001,
-            'receive_port' : 8000,
-            'forwarder_enabled' : False,
-            'marker_mode' : "PlaybackTrack",
-            'window_loc' : (400, 222),
-            'window_size' : (221, 310),
-            'name_only_match' : False,
-            'console_type': DiGiCo.type,
-            'daw_type' : Reaper.type
+            "console_ip": "192.0.2.11",
+            "repeater_ip": "192.0.2.21",
+            "repeater_port": 9999,
+            "repeater_receive_port": 9998,
+            "reaper_port": 49102,
+            "reaper_receive_port": 49101,
+            "console_port": 8001,
+            "receive_port": 8000,
+            "forwarder_enabled": False,
+            "marker_mode": "PlaybackTrack",
+            "window_loc": (400, 222),
+            "name_only_match": False,
+            "console_type": DiGiCo.type,
+            "daw_type": Reaper.type,
+            "always_on_top": False,
+            "mmc_control_enabled": False,
+            "external_control_osc_port": 49103,
+            "external_control_midi_port": constants.MIDI_PORT_NONE,
         }
 
     @property
@@ -35,16 +41,6 @@ class ThreadSafeSettings:
     def console_ip(self, value):
         with self._lock:
             self._settings["console_ip"] = value
-
-    @property
-    def reaper_ip(self) -> str:
-        with self._lock:
-            return self._settings["reaper_ip"]
-
-    @reaper_ip.setter
-    def reaper_ip(self, value):
-        with self._lock:
-            self._settings["reaper_ip"] = value
 
     @property
     def repeater_ip(self) -> str:
@@ -65,7 +61,7 @@ class ThreadSafeSettings:
     def repeater_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["repeater_port"] = port_num
 
@@ -78,7 +74,7 @@ class ThreadSafeSettings:
     def repeater_receive_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["repeater_receive_port"] = port_num
 
@@ -91,7 +87,7 @@ class ThreadSafeSettings:
     def reaper_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["reaper_port"] = port_num
 
@@ -104,7 +100,7 @@ class ThreadSafeSettings:
     def reaper_receive_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["reaper_receive_port"] = port_num
 
@@ -117,7 +113,7 @@ class ThreadSafeSettings:
     def console_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["console_port"] = port_num
 
@@ -130,7 +126,7 @@ class ThreadSafeSettings:
     def receive_port(self, value):
         with self._lock:
             port_num = int(value)
-            if not 1 <= port_num <= 65535:
+            if not validate_port_num(port_num):
                 raise ValueError("Invalid port number")
             self._settings["receive_port"] = port_num
 
@@ -165,16 +161,6 @@ class ThreadSafeSettings:
             self._settings["window_loc"] = value
 
     @property
-    def window_size(self):
-        with self._lock:
-            return self._settings["window_size"]
-
-    @window_size.setter
-    def window_size(self, value):
-        with self._lock:
-            self._settings["window_size"] = value
-
-    @property
     def name_only_match(self) -> bool:
         with self._lock:
             return self._settings["name_only_match"]
@@ -204,6 +190,56 @@ class ThreadSafeSettings:
         with self._lock:
             self._settings["daw_type"] = value
 
+    @property
+    def always_on_top(self) -> bool:
+        with self._lock:
+            return self._settings["always_on_top"]
+
+    @always_on_top.setter
+    def always_on_top(self, value):
+        with self._lock:
+            self._settings["always_on_top"] = value
+
+    @property
+    def mmc_control_enabled(self) -> bool:
+        with self._lock:
+            return self._settings["mmc_control_enabled"]
+
+    @mmc_control_enabled.setter
+    def mmc_control_enabled(self, value: bool):
+        with self._lock:
+            self._settings["mmc_control_enabled"] = value
+
+    @property
+    def external_control_osc_port(self) -> int:
+        with self._lock:
+            return self._settings["external_control_osc_port"]
+
+    @external_control_osc_port.setter
+    def external_control_osc_port(self, value: int):
+        with self._lock:
+            port_num = int(value)
+            if not validate_port_num(port_num):
+                raise ValueError("Invalid port number")
+            self._settings["external_control_osc_port"] = port_num
+
+    @property
+    def external_control_midi_port(self) -> str:
+        with self._lock:
+            return self._settings["external_control_midi_port"]
+
+    @external_control_midi_port.setter
+    def external_control_midi_port(self, value: str):
+        with self._lock:
+            self._settings["external_control_midi_port"] = value
+
+    def update_from_config_file(self, path: str) -> None:
+        """Updates the currently loaded settings from the contents of the config file"""
+        logger.info("Loading settings from config file")
+        config = configparser.ConfigParser()
+        config.read(path)
+        self.update_from_config(config)
+
     def update_from_config(self, config: ConfigParser):
         # Update settings from a ConfigParser object
         with self._lock:
@@ -212,6 +248,7 @@ class ThreadSafeSettings:
                 "repeater_ip": "repeater_ip",
                 "console_type": "console_type",
                 "daw_type": "daw_type",
+                "external_control_midi_port": "external_control_midi_port",
             }
             for settings_name, config_name in string_properties.items():
                 self._settings[settings_name] = config.get(
@@ -225,6 +262,7 @@ class ThreadSafeSettings:
                 "repeater_port": "default_repeater_send_port",
                 "repeater_receive_port": "default_repeater_receive_port",
                 "reaper_receive_port": "default_reaper_receive_port",
+                "external_control_osc_port": "external_control_osc_port",
             }
             for settings_name, config_name in int_properties.items():
                 self._settings[settings_name] = config.getint(
@@ -234,25 +272,30 @@ class ThreadSafeSettings:
             boolean_properties = {
                 "forwarder_enabled": "forwarder_enabled",
                 "name_only_match": "name_only_match",
+                "always_on_top": "always_on_top",
+                "mmc_control_enabled": "mmc_control_enabled",
             }
             for settings_name, config_name in boolean_properties.items():
                 self._settings[settings_name] = config.getboolean(
                     "main", config_name, fallback=self._settings[settings_name]
                 )
 
-            # Not implementing fallbacks for these since they've been around since the v3 config
-            self._settings.update(
-                {
-                    "window_loc": (
-                        int(config["main"]["window_pos_x"]),
-                        int(config["main"]["window_pos_y"]),
-                    ),
-                    "window_size": (
-                        int(config["main"]["window_size_x"]),
-                        int(config["main"]["window_size_y"]),
-                    ),
-                }
-            )
+            # Not implementing fallbacks for this since it's been around since the v3 config
+            try:
+                self._settings.update(
+                    {
+                        "window_loc": (
+                            int(config["main"]["window_pos_x"]),
+                            int(config["main"]["window_pos_y"]),
+                        )
+                    }
+                )
+            except Exception as e:
+                logger.warning("Could not load setting %s. %s", settings_name, e)
 
 
 settings = ThreadSafeSettings()
+
+
+def validate_port_num(port_num: int) -> bool:
+    return 1 <= port_num <= 65535

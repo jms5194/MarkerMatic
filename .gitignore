@@ -6,3 +6,10 @@
 __pycache__/
 .DS_Store
 /venv4/
+/MarkerMatic-Bitwig Bridge/target
+/MarkerMatic-Bitwig Bridge/shelf/
+/MarkerMatic-Bitwig Bridge/mavenHomeManager.xml
+/MarkerMatic-Bitwig Bridge/.idea/workspace.xml
+/.ruff_cache/
+.env
+/.eggs/

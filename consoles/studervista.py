@@ -4,19 +4,23 @@ import time
 from typing import Any, Callable, List
 
 import asn1
-import wx
 from pubsub import pub
 
+import constants
+from constants import PyPubSubTopics
 from logger_config import logger
 
 from . import Console
 
 
 class StuderVista(Console):
+    fixed_receive_port = constants.PORT_STUDER_EMBER_RECEIVE
     type = "Studer Vista"
     supported_features = []
     _client_socket: socket.socket
-    _shutdown_server_event = threading.Event()
+    _connection_established = threading.Event()
+    # TODO: Once we rework heartbeat to be more like DAW connecion checks,
+    # we can likely remove this event
     _received_real_data = threading.Event()
 
     def start_managed_threads(
@@ -25,41 +29,57 @@ class StuderVista(Console):
         self._shutdown_server_event.clear()
         self._received_real_data.clear()
         start_managed_thread("console_connection_thread", self._console_client_thread)
-        pub.subscribe(self._shutdown_server_event.set, "shutdown_servers")
 
     def _console_client_thread(self):
         from app_settings import settings
 
         while not self._shutdown_server_event.is_set():
+            self._connection_established.clear()
             with socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM
             ) as self._client_socket:
                 try:
+                    self._client_socket.settimeout(constants.CONNECTION_TIMEOUT_SECONDS)
+                    self._client_socket.bind(
+                        (constants.IP_OUTBOUND_ANY, constants.PORT_STUDER_EMBER_RECEIVE)
+                    )
                     self._client_socket.connect(
                         (settings.console_ip, settings.console_port)
                     )
-                    logger.info("Ember connected successfully")
-                except TimeoutError:
+                except Exception:
+                    logger.warning(f"Could not connect to {self.type}")
+                    time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
                     continue
+                logger.info(f"Connected to {self.type}")
+                self._client_socket.settimeout(constants.MESSAGE_TIMEOUT_SECONDS)
                 self._send_subscribe()
+                self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
                     try:
                         result_bytes = self._client_socket.recv(4096)
+                    except TimeoutError:
+                        continue
                     except ConnectionResetError:
-                        logger.error("Ember connection reset")
-                        pub.sendMessage("console_disconnected")
+                        logger.error(f"{self.type} connection reset")
+                        pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
                         break
                     decoder = asn1.Decoder()
                     decoder.start(result_bytes)
                     _, value = decoder.read()
                     decoded_message = self._decode_message(value)
                     if decoded_message:
-                        pub.sendMessage("console_connected", consolename="Connected")
+                        logger.info(
+                            f"Received a message from {self.type}, connection is healthy"
+                        )
+                        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
                         self._received_real_data.set()
                         if decoded_message != "Last Recalled Snapshot":
                             decoded_message = decoded_message[-1:][0]
-                            pub.sendMessage("handle_cue_load", cue=decoded_message)
-            time.sleep(5000)
+                            pub.sendMessage(
+                                PyPubSubTopics.HANDLE_CUE_LOAD, cue=decoded_message
+                            )
+            time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+        logger.info(f"Closing connection to {self.type}")
 
     def _decode_message(self, value: Any) -> List[str]:
         message_string: List[str] = []
@@ -76,17 +96,21 @@ class StuderVista(Console):
         )
 
     def heartbeat(self) -> None:
-        if hasattr(self, "_client_socket"):
+        if hasattr(self, "_client_socket") and self._connection_established.is_set():
             try:
                 if self._received_real_data.is_set():
                     self._client_socket.sendall(
                         b"\x7f\x8f\xff\xfe\xd9\\\x800\x80\x00\x00\x00\x00"
                     )
-                    pub.sendMessage("console_connected", consolename="Connected")
+                    pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
                 else:
-                    self._send_subscribe()
-                    pub.sendMessage(
-                        "console_connected", consolename="Starting", colour=wx.YELLOW
+                    logger.info(
+                        f"Re-sending the {self.type} subscription request from the heartbeat"
                     )
+                    self._send_subscribe()
+                    # TODO: Re-implement with a starting/connecting status
+                    # pub.sendMessage(
+                    #     PyPubSubTopics.CONSOLE_CONNECTED, consolename="Starting", colour=wx.YELLOW
+                    # )
             except OSError:
-                pub.sendMessage("console_disconnected")
+                pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)

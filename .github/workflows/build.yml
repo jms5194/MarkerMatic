@@ -1,10 +1,10 @@
-name: Cross-Platform Build with PyInstaller
+name: Cross-Platform Build with Py2App and Pyinstaller
 
 # Call when commit is tagged with v*
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -20,13 +20,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ github.ref_name }}
-          draft: false
+          draft: true
           prerelease: false
           generate_release_notes: false
+
 
   build:
     # When create_release is finished
     needs: create_release
+
     strategy:
       matrix:
         # Building for Mac silicon, Mac Intel, and Windows
@@ -60,6 +62,7 @@ jobs:
         run: |
           python - pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
       # Bring in our apple certificate to the keychain of the runner
       - name: Import Apple Certificate
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
@@ -107,69 +110,99 @@ jobs:
           "@ | Out-File -FilePath .env -Encoding ASCII
         shell: pwsh
       # Build app with Pyinstaller on Mac
-      - name: Build with PyInstaller (MacOS)
+      - name: Build with Py2App (MacOS)
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          pyinstaller --clean --noconfirm DigiReaper.spec -- --mac_osx
+          python setup.py py2app
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
       # Build app with Pyinstaller on Windows
       - name: Build with PyInstaller (Windows)
         if: matrix.os == 'windows-latest'
         run: |
+          pip install pyinstaller==6.13.0
+          pip install pyinstaller-hooks-contrib==2025.4
           if ("${{ github.event_name }}" -eq "pull_request") {
-            pyinstaller --clean --noconfirm DigiReaper.spec -- --win --debug
+            pyinstaller --clean --noconfirm pyinstaller.spec -- --debug
           } else {
-            pyinstaller --clean --noconfirm DigiReaper.spec -- --win
+            pyinstaller --clean --noconfirm pyinstaller.spec --
           }
+      - name: Build Windows installer (Inno Setup)
+        if: matrix.os == 'windows-latest'
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: innosetup.iss
 
+      - name: Codesign Application for Notarization
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          cd dist
+          find "MarkerMatic.app" -iname '*.so' -or -iname '*.dylib' |
+          while read libfile; do
+            codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
+            --entitlements ../entitlements.plist \
+            --deep "${libfile}" \
+            --force \
+            --timestamp \
+            --options runtime;
+          done;
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "MarkerMatic.app" 
+          codesign --verify --verbose=4 "MarkerMatic.app"
       - name: Zip Application for Notarization
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          ditto -c -k --keepParent "dist/Digico-Reaper Link.app" "Digico-Reaper Link.zip"
+          ditto -c -k --keepParent "dist/MarkerMatic.app" "MarkerMatic.zip"
       # Send the application zip to Apple for Notarization and stapling
       - name: Notarize and Staple
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          xcrun notarytool submit "Digico-Reaper Link.zip" --apple-id \
+          xcrun notarytool submit "MarkerMatic.zip" --apple-id \
             "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
             "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
             "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
-          chmod 755 "dist/Digico-Reaper Link.app"
-          xcrun stapler staple "dist/Digico-Reaper Link.app"
+          chmod 755 "dist/MarkerMatic.app"
+          xcrun stapler staple "dist/MarkerMatic.app"
 
       - name: Verify Notarization
         if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          spctl -a -v "dist/Digico-Reaper Link.app"
-          rm "Digico-Reaper Link.zip"
+          spctl -a -v "dist/MarkerMatic.app"
+          rm "MarkerMatic.zip"
       # Build an installer DMG for MacOS
       - name: Create dmg MacOS
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          chmod a+x "dist/Digico-Reaper Link.app"
+          chmod a+x "dist/MarkerMatic.app"
           brew update
           brew install create-dmg
-          create-dmg \
-          --volname "Digico-Reaper Link Installer" \
-          --app-drop-link 600 185 \
-          --window-pos 200 120 \
-          --window-size 800 400 \
-          --hide-extension "Digico-Reaper Link.app" \
-          "Digico-Reaper Link Installer"-${{ matrix.target }}.dmg \
-          "dist/Digico-Reaper Link.app"
-      # Zip the windows applications
-      - name: Create zip on Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          Compress-Archive -Path "dist/Digico-Reaper Link.exe" -DestinationPath "./Digico-Reaper Link-win.zip"
-        shell: pwsh
+          max_tries=10
+          i=0
+          until create-dmg \
+            --volname "MarkerMatic Installer" \
+            --app-drop-link 600 185 \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --hide-extension "MarkerMatic.app" \
+            "MarkerMatic Installer"-${{ matrix.target }}.dmg \
+            "dist/MarkerMatic.app"
+          do
+            if [ $i -eq $max_tries ]
+            then
+              echo "create-dmg did not succeed even after 10 tries."
+              exit 1
+            fi
+            i=$((i+1))
+          done
+
+
       # Add the built binaries to the release
       - name: Release
         uses: softprops/action-gh-release@v2
+
         with:
-          tag_name: ${{ needs.create_release.outputs.tag-name }}
+          tag_name: ${{needs.create_release.outputs.tag_name}}
+          draft: true
           files: |
-            Digico-Reaper\ Link\ Installer-macos-arm64.dmg
-            Digico-Reaper\ Link\ Installer-macos-x86.dmg
-            Digico-Reaper\ Link-win.zip
+            MarkerMatic\ Installer-macos-arm64.dmg
+            MarkerMatic\ Installer-macos-x86.dmg
+            MarkerMatic\ Installer.exe
