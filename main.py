@@ -295,9 +295,8 @@ class MainPanel(wx.Panel):
         # Subscribing to the OSC response for console name to reset the timeout timer
         pub.subscribe(self.console_connected, PyPubSubTopics.CONSOLE_CONNECTED)
         pub.subscribe(
-            self.update_console_connection_status,
+            self.console_disconnected,
             PyPubSubTopics.CONSOLE_DISCONNECTED,
-            connected=False,
         )
         pub.subscribe(
             self.update_daw_connection_status, PyPubSubTopics.DAW_CONNECTION_STATUS
@@ -404,6 +403,9 @@ class MainPanel(wx.Panel):
             wx.CallAfter(self.console_timeout_timer.Stop)
         self.configure_timers()
         wx.CallAfter(self.update_console_connection_status, True, consolename)
+
+    def console_disconnected(self) -> None:
+        wx.CallAfter(self.update_console_connection_status, connected=False)
 
     def call_for_daw_reset(self, daw_name: str):
         logger.info(f"{daw_name} has been auto configured. Requesting restart")
