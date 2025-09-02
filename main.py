@@ -172,13 +172,12 @@ class MainWindow(wx.Frame):
         return self._app_icons
 
 
-class MainPanel(wx.Panel):
+class MainPanel(wx.Window):
     console_timeout_timer: Optional[wx.CallLater] = None
 
     def __init__(self, parent):
         logger.info("Initializing main panel")
-        wx.Panel.__init__(self, parent)
-
+        super().__init__(parent)
         header_font = wx.Font().Bold()
         header_font.MakeLarger()
         header_font.MakeLarger()
