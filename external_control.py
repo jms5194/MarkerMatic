@@ -91,8 +91,8 @@ def external_midi_control(stop_event: threading.Event):
                 if port_name not in mido.get_input_names():  # pyright: ignore[reportAttributeAccessIssue]
                     raise MidiPortUnavailableError("MIDI port isn't available")
                 port: mido.ports.BasePort = mido.open_input(  # pyright: ignore[reportAttributeAccessIssue]
-                    port=port_name,
-                    callback=_handle_midi_message,
+                port_name,
+                callback=_handle_midi_message,
                 )
                 if port.name == port_name:
                     logger.info(f"Opened MIDI port {port_name}")
@@ -100,6 +100,8 @@ def external_midi_control(stop_event: threading.Event):
                     # This thread needs to block so the port doesn't get shutdown
                     stop_event.wait()
                 else:
+                    print(port.name)
+                    print(port_name)
                     logger.error("mido opened the wrong MIDI port")
                     port.close()
             except (OSError, MidiPortUnavailableError) as e:
