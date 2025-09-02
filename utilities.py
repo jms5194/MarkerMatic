@@ -51,7 +51,6 @@ class DawConsoleBridge:
         logger.info("Initializing ConsoleMarkerBridge")
         self.ini_path = ""
         self.config_dir = ""
-        self.lock = threading.Lock()
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
@@ -196,22 +195,30 @@ class DawConsoleBridge:
             "external_midi_control", external_control.external_midi_control
         )
 
+    _console_lock = threading.Lock()
+
     @property
     def console(self) -> Console:
-        return self._console
+        with self._console_lock:
+            return self._console
 
     @console.setter
     def console(self, value: Console) -> None:
-        self._console = value
+        with self._console_lock:
+            self._console = value
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
+
+    _daw_lock = threading.Lock()
 
     @property
     def daw(self) -> Daw:
-        return self._daw
+        with self._daw_lock:
+            return self._daw
 
     @daw.setter
     def daw(self, value: Daw) -> None:
-        self._daw = value
+        with self._daw_lock:
+            self._daw = value
         pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, daw=value)
 
     # Console Functions:
