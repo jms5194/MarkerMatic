@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 datas = [
     (".env", "."),
-    ("resources/markermaticicon.ico", "./resources"),
+    (f"resources/{constants.ICON_WIN_FILENAME}", "./resources"),
     ("resources/icons", "./resources/icons"),
     (
         "resources/MarkerMatic-Bridge.bwextension",
@@ -49,7 +49,7 @@ exe = EXE(
     a.datas,
     a.scripts,
     name=constants.APPLICATION_NAME,
-    icon="resources/markermaticicon.ico",
+    icon=f"resources/{constants.ICON_WIN_FILENAME}",
     debug=args.debug is not None and args.debug,
     bootloader_ignore_signals=False,
     strip=False,

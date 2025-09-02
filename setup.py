@@ -21,10 +21,10 @@ APP = ["main.py"]
 DATA_FILES = []
 OPTIONS = {
     "argv_emulation": False,
-    "iconfile": "resources/markermaticicon.icns",
+    "iconfile": f"resources/{constants.ICON_MAC_FILENAME}",
     "resources": [
         "resources/icons",
-        "resources/markermaticicon.ico",
+        f"resources/{constants.ICON_WIN_FILENAME}",
         "resources/MarkerMatic-Bridge.bwextension",
     ],
     "excludes": ["pyinstaller", "pyinstaller-hooks-contrib"],
