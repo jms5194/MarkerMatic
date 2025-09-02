@@ -33,9 +33,9 @@ LicenseFile=LICENSE
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=\
+OutputDir=/
 OutputBaseFilename=MarkerMatic Installer
-SetupIconFile=\resources\markermaticinstaller.ico
+SetupIconFile=/resources/markermaticinstaller.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -46,7 +46,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "dist\MarkerMatic.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "/dist/MarkerMatic.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
