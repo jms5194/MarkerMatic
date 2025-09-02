@@ -127,6 +127,11 @@ jobs:
           } else {
             pyinstaller --clean --noconfirm pyinstaller.spec --
           }
+      - name: Build Windows installer (Inno Setup)
+        if: matrix.os == 'windows-latest'
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: innosetup.iss
 
       - name: Codesign Application for Notarization
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
@@ -189,12 +194,6 @@ jobs:
             i=$((i+1))
           done
 
-      # Zip the windows applications
-      - name: Create zip on Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          Compress-Archive -Path "dist/MarkerMatic.exe" -DestinationPath "./MarkerMatic-win.zip"
-        shell: pwsh
 
       # Add the built binaries to the release
       - name: Release
@@ -206,4 +205,4 @@ jobs:
           files: |
             MarkerMatic\ Installer-macos-arm64.dmg
             MarkerMatic\ Installer-macos-x86.dmg
-            MarkerMatic-win.zip
+            MarkerMatic\ Installer.exe
