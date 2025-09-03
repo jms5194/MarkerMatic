@@ -13,7 +13,7 @@ from . import Console, Feature
 class TheatreMix(Console):
     fixed_send_port: int = 32000  # pyright: ignore[reportIncompatibleVariableOverride]
     type = "TheatreMix"
-    supported_features = [Feature.CUE_NUMBER]
+    supported_features = []
     _client: udp_client.DispatchClient
 
     def start_managed_threads(
@@ -44,17 +44,16 @@ class TheatreMix(Console):
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _subscribe_ok_received(self, _address: str, expires_seconds: int) -> None:
-        self._message_received()
+        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED, consolename=None)
 
     def _subscribe_fail_received(self, _address: str) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
     def _cue_number_received(self, _address: str, cue_number: str) -> None:
-        self._message_received()
         # TheatreMix (as of Sept. 2025) does not expose names via OSC. So just record the cue number
         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
 
-    def _message_received(self) -> None:
+    def _message_received(self, _address: str, *_) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED, consolename=None)
 
     def heartbeat(self) -> None:
