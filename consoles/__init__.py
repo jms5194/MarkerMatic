@@ -3,6 +3,7 @@ from .behringerx32 import BehringerX32
 from .behringerxair import BehringerXAir
 from .digico import DiGiCo
 from .studervista import StuderVista
+from .theatremix import TheatreMix
 from .yamaha import Yamaha
 
 CONSOLES = {
@@ -10,6 +11,7 @@ CONSOLES = {
     "Behringer X Air": BehringerXAir,
     "DiGiCo": DiGiCo,
     "Studer Vista": StuderVista,
+    "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,
 }
 
@@ -21,5 +23,6 @@ __all__ = [
     "BehringerXAir",
     "DiGiCo",
     "StuderVista",
+    "TheatreMix",
     "Yamaha",
 ]
