@@ -51,9 +51,7 @@ class Reaper(Daw):
             with self._connection_check_lock:
                 self._connection_timeout_counter += 1
                 if self._connection_timeout_counter == constants.CHECK_CONNECTION_TIME:
-                    with self.reaper_send_lock:
-                        # Refresh all control surfaces
-                        self.reaper_client.send_message("/action", 41743)
+                    self._refresh_control_surfaces()
                 elif (
                     self._connection_timeout_counter
                     >= constants.CHECK_CONNECTION_TIME_COMBINED
@@ -134,6 +132,8 @@ class Reaper(Daw):
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
             self._connected.set()
+            # Always refresh control surfaces on connection have Reaper's state
+            self._refresh_control_surfaces()
             pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
@@ -179,6 +179,10 @@ class Reaper(Daw):
         elif recording is False:
             self.is_recording = False
             logger.info("Reaper is not recording")
+
+    def _refresh_control_surfaces(self) -> None:
+        with self.reaper_send_lock:
+            self.reaper_client.send_message("/action", 41743)
 
     def _goto_marker_by_id(self, marker_id):
         with self.reaper_send_lock:
