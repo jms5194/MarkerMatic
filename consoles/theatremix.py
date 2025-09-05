@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from pubsub import pub
 from pythonosc import udp_client
@@ -7,7 +7,7 @@ from pythonosc import udp_client
 import constants
 from constants import PyPubSubTopics
 
-from . import Console, Feature
+from . import Console
 
 
 class TheatreMix(Console):
@@ -31,10 +31,8 @@ class TheatreMix(Console):
         self._client.dispatcher.map("/subscribeok", self._subscribe_ok_received)
         self._client.dispatcher.map("/subscribefail", self._subscribe_fail_received)
         self._client.dispatcher.map("/cuefired", self._cue_number_received)
-        self._client.dispatcher.map("/thump", self._message_received)
-        self._client.dispatcher.set_default_handler(print)
+        self._client.dispatcher.set_default_handler(self._message_received)
 
-        # Try connecting to the console and subscribing to updates
         while not self._shutdown_server_event.is_set():
             try:
                 self.heartbeat()
@@ -43,20 +41,24 @@ class TheatreMix(Console):
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
-    def _subscribe_ok_received(self, _address: str, expires_seconds: int) -> None:
-        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED, consolename=None)
+    def _subscribe_ok_received(self, _address: str, _expires_seconds: int) -> None:
+        self._message_received()
 
     def _subscribe_fail_received(self, _address: str) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
-    def _cue_number_received(self, _address: str, cue_number: str) -> None:
-        # TheatreMix (as of Sept. 2025) does not expose names via OSC. So just record the cue number
+    def _cue_number_received(
+        self, _address: str, cue_number: str, cue_name: Optional[str] = None, *_
+    ) -> None:
+        if cue_name is not None:
+            # Basic support for TheatreMix's cue names in an upcoming release
+            cue_number = f"{cue_number} {cue_name}"
         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
+        self._message_received()
 
-    def _message_received(self, _address: str, *_) -> None:
-        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED, consolename=None)
+    def _message_received(self, *_) -> None:
+        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/thump", [])
             self._client.send_message("/subscribe", [])
