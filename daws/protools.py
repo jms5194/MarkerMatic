@@ -45,7 +45,9 @@ class ProTools(Daw):
                     application_name=constants.APPLICATION_NAME,
                 )
                 if self.pt_engine_connection is not None:
-                    logger.info("Connection established to Pro Tools")
+                    logger.info(
+                        f"Connection established to Pro Tools, PTSL Version {self.pt_engine_connection.ptsl_version()}"
+                    )
                     pub.sendMessage(
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True
                     )
