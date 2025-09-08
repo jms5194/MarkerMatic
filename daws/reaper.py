@@ -232,7 +232,7 @@ class Reaper(Daw):
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
-        settings.marker_mode = "Recording"
+        settings.marker_mode = PlaybackState.RECORDING
         pub.sendMessage(
             PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
         )
@@ -243,9 +243,15 @@ class Reaper(Daw):
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
 
-        if settings.marker_mode == "Recording" and self.is_recording is True:
+        if (
+            settings.marker_mode is PlaybackState.RECORDING
+            and self.is_recording is True
+        ):
             self._place_marker_with_name(cue)
-        elif settings.marker_mode == "PlaybackTrack" and self.is_playing is False:
+        elif (
+            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
+            and self.is_playing is False
+        ):
             self.get_marker_id_by_name(cue)
 
     def _shutdown_servers(self):

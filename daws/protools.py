@@ -8,7 +8,7 @@ from typing import Any, Callable
 from logger_config import logger
 import threading
 import sys
-from constants import PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction
 import grpc
 
 
@@ -91,12 +91,12 @@ class ProTools(Daw):
         from app_settings import settings
 
         if (
-            settings.marker_mode == "Recording"
+            settings.marker_mode is PlaybackState.RECORDING
             and self._get_current_transport_state() == "TS_TransportRecording"
         ):
             self._place_marker_with_name(cue)
         elif (
-            settings.marker_mode == "PlaybackTrack"
+            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
             and self._get_current_transport_state() == "TS_TransportStopped"
         ):
             self._get_marker_id_by_name(cue)

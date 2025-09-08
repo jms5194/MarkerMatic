@@ -278,7 +278,7 @@ class DiGiCo(Console):
                     "mode record",
                     "mode recording",
                 ):
-                    settings.marker_mode = "Recording"
+                    settings.marker_mode = PlaybackState.RECORDING
                     pub.sendMessage(
                         PyPubSubTopics.CHANGE_PLAYBACK_STATE,
                         selected_mode=PlaybackState.RECORDING,
@@ -291,7 +291,7 @@ class DiGiCo(Console):
                     "mode tracking",
                     "mode PB Track",
                 ):
-                    settings.marker_mode = "PlaybackTrack"
+                    settings.marker_mode = PlaybackState.PLAYBACK_TRACK
                     pub.sendMessage(
                         PyPubSubTopics.CHANGE_PLAYBACK_STATE,
                         selected_mode=PlaybackState.PLAYBACK_TRACK,
@@ -302,7 +302,7 @@ class DiGiCo(Console):
                     "mode no track",
                     "mode no tracking",
                 ):
-                    settings.marker_mode = "PlaybackNoTrack"
+                    settings.marker_mode = PlaybackState.PLAYBACK_NO_TRACK
                     pub.sendMessage(
                         PyPubSubTopics.CHANGE_PLAYBACK_STATE,
                         selected_mode=PlaybackState.PLAYBACK_NO_TRACK,

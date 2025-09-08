@@ -234,7 +234,7 @@ class Ardour(Daw):
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
-        settings.marker_mode = "Recording"
+        settings.marker_mode = PlaybackState.RECORDING
         wx.CallAfter(
             pub.sendMessage,
             PyPubSubTopics.CHANGE_PLAYBACK_STATE,
@@ -249,12 +249,15 @@ class Ardour(Daw):
         from app_settings import settings
 
         if (
-            settings.marker_mode == "Recording"
+            settings.marker_mode is PlaybackState.RECORDING
             and self.is_recording is True
             and self.is_playing is True
         ):
             self._place_marker_with_name(cue)
-        elif settings.marker_mode == "PlaybackTrack" and self.is_playing is False:
+        elif (
+            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
+            and self.is_playing is False
+        ):
             self._goto_marker_by_name(cue)
             # TODO: Add name only logic here
 

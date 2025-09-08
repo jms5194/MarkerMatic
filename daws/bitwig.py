@@ -8,7 +8,7 @@ from py4j.java_gateway import JavaGateway
 from py4j.protocol import Py4JError, Py4JJavaError, Py4JNetworkError
 
 import constants
-from constants import PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw, configure_bitwig
@@ -157,13 +157,13 @@ class Bitwig(Daw):
 
         try:
             if (
-                settings.marker_mode == "Recording"
+                settings.marker_mode is PlaybackState.RECORDING
                 and self.bitwig_transport.isPlaying().get()
                 and self.bitwig_transport.isArrangerRecordEnabled().get()
             ):
                 self._place_marker_with_name(cue)
             elif (
-                settings.marker_mode == "PlaybackTrack"
+                settings.marker_mode is PlaybackState.PLAYBACK_TRACK
                 and not self.bitwig_transport.isPlaying().get()
             ):
                 self._goto_marker_by_name(cue)

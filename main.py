@@ -312,12 +312,9 @@ class MainPanel(wx.Window):
         for button in self._mode_buttons:
             if button is event.GetEventObject() and event.IsChecked():
                 button.Disable()
-                if button.playback_state is PlaybackState.RECORDING:
-                    settings.marker_mode = "Recording"
-                elif button.playback_state is PlaybackState.PLAYBACK_TRACK:
-                    settings.marker_mode = "PlaybackTrack"
-                elif button.playback_state is PlaybackState.PLAYBACK_NO_TRACK:
-                    settings.marker_mode = "PlaybackNoTrack"
+                if button.playback_state in PlaybackState:
+                    logger.info(f"marker_mode set to {button.playback_state}")
+                    settings.marker_mode = button.playback_state
             else:
                 button.Enable()
                 button.SetValue(False)

@@ -21,7 +21,7 @@ class ThreadSafeSettings:
             "console_port": 8001,
             "receive_port": 8000,
             "forwarder_enabled": False,
-            "marker_mode": "PlaybackTrack",
+            "marker_mode": constants.PlaybackState.PLAYBACK_TRACK,
             "window_loc": (400, 222),
             "name_only_match": False,
             "console_type": DiGiCo.type,
@@ -141,12 +141,12 @@ class ThreadSafeSettings:
             self._settings["forwarder_enabled"] = value
 
     @property
-    def marker_mode(self) -> str:
+    def marker_mode(self) -> constants.PlaybackState:
         with self._lock:
             return self._settings["marker_mode"]
 
     @marker_mode.setter
-    def marker_mode(self, value):
+    def marker_mode(self, value: constants.PlaybackState):
         with self._lock:
             self._settings["marker_mode"] = value
 
