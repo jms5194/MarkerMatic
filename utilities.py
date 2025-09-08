@@ -1,13 +1,10 @@
 import inspect
-import ipaddress
 import os.path
-import socket
 import threading
 import time
 from typing import Callable, List
 
 import appdirs
-import psutil
 from configupdater import ConfigUpdater
 from pubsub import pub
 
@@ -18,29 +15,6 @@ from consoles import CONSOLES, Console
 from constants import PyPubSubTopics
 from daws import DAWS, Daw
 from logger_config import logger
-
-
-def find_local_ip_in_subnet(console_ip):
-    # Find our local interface in the same network as the console interface
-    ipv4_interfaces = []
-    # Make a list of all the network interfaces on our machine
-    for interface, snics in psutil.net_if_addrs().items():
-        for snic in snics:
-            if snic.family == socket.AF_INET:
-                ipv4_interfaces.append((snic.address, snic.netmask))
-    # Iterate through network interfaces to see if any are in the same subnet as console
-    for i in ipv4_interfaces:
-        # Convert tuples to strings like 192.168.1.0/255.255.255.0 since thats what ipaddress expects
-        interface_ip_string = i[0] + "/" + i[1]
-        # If strict is off, then the user bits of the computer IP will be masked automatically
-        # Need to add error handling here
-        if ipaddress.IPv4Address(console_ip) in ipaddress.IPv4Network(
-            interface_ip_string, False
-        ):
-            return i[0]
-        else:
-            pass
-    return None
 
 
 class DawConsoleBridge:

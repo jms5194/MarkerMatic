@@ -8,6 +8,7 @@ from pythonosc import dispatcher, osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import ThreadingOSCUDPServer
 
+import constants
 import external_control
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
@@ -99,8 +100,6 @@ class DiGiCo(Console):
 
     def _build_digico_osc_servers(self):
         # Connect to the Digico console
-        from utilities import find_local_ip_in_subnet
-
         logger.info("Starting Digico OSC server")
         from app_settings import settings
 
@@ -110,11 +109,8 @@ class DiGiCo(Console):
         self.digico_dispatcher = dispatcher.Dispatcher()
         self._receive_console_OSC()
         try:
-            local_ip = find_local_ip_in_subnet(settings.console_ip)
-            if not local_ip:
-                raise RuntimeError("No local ip found in console's subnet")
             self.digico_osc_server = osc_server.ThreadingOSCUDPServer(
-                (find_local_ip_in_subnet(settings.console_ip), settings.receive_port),
+                (constants.IP_LISTEN_ANY, settings.receive_port),
                 self.digico_dispatcher,
             )
             logger.info("Digico OSC server started")
@@ -126,7 +122,6 @@ class DiGiCo(Console):
         # Connect to Repeater via OSC
         logger.info("Starting Repeater OSC server")
         from app_settings import settings
-        from utilities import find_local_ip_in_subnet
 
         self.repeater_client = udp_client.SimpleUDPClient(
             settings.repeater_ip, settings.repeater_port
@@ -138,7 +133,7 @@ class DiGiCo(Console):
             # Raw OSC Server to deal with corrupted OSC from iPad App
             self.repeater_osc_server = RawOSCServer(
                 (
-                    find_local_ip_in_subnet(settings.console_ip),
+                    constants.IP_LISTEN_ANY,
                     settings.repeater_receive_port,
                 ),
                 self.repeater_dispatcher,
