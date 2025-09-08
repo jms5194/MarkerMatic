@@ -41,7 +41,8 @@ class ProTools(Daw):
         while not self._shutdown_server_event.is_set():
             try:
                 self.pt_engine_connection = ptsl.engine.Engine(
-                    company_name="JSSD", application_name=sys.argv[0]
+                    company_name=constants.APPLICATION_AUTHOR,
+                    application_name=constants.APPLICATION_NAME,
                 )
                 if self.pt_engine_connection is not None:
                     logger.info("Connection established to Pro Tools")
