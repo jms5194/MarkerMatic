@@ -1,15 +1,17 @@
+import threading
 import time
+from typing import Any, Callable
 
-from . import Daw
+import grpc
 import ptsl
 from ptsl import PTSL_pb2 as pt
 from pubsub import pub
-from typing import Any, Callable
-from logger_config import logger
-import threading
-import sys
+
+import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
-import grpc
+from logger_config import logger
+
+from . import Daw
 
 
 class ProTools(Daw):
@@ -34,7 +36,7 @@ class ProTools(Daw):
         logger.info("Starting Pro Tools Connection thread")
         start_managed_thread("daw_connection_thread", self._open_protools_connection)
 
-    def _open_protools_connection(self):
+    def _open_protools_connection(self) -> None:
         # Open a connection to Pro Tools using the PTSL scripting interface
         while not self._shutdown_server_event.is_set():
             try:
@@ -46,12 +48,10 @@ class ProTools(Daw):
                     pub.sendMessage(
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True
                     )
-                    return True
+                    return
             except Exception:
                 logger.error("Unable to connect to Pro Tools. Retrying in 1 second")
                 time.sleep(1)
-                self._open_protools_connection()
-        return None
 
     def _place_marker_with_name(self, marker_name):
         with self.pt_send_lock:
