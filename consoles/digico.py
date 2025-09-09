@@ -8,8 +8,8 @@ from pythonosc import dispatcher, osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import ThreadingOSCUDPServer
 
-import constants
 import external_control
+import utilities
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
@@ -110,7 +110,10 @@ class DiGiCo(Console):
         self._receive_console_OSC()
         try:
             self.digico_osc_server = osc_server.ThreadingOSCUDPServer(
-                (constants.IP_LISTEN_ANY, settings.receive_port),
+                (
+                    utilities.get_ip_listen_any(settings.console_ip),
+                    settings.receive_port,
+                ),
                 self.digico_dispatcher,
             )
             logger.info("Digico OSC server started")
@@ -133,7 +136,7 @@ class DiGiCo(Console):
             # Raw OSC Server to deal with corrupted OSC from iPad App
             self.repeater_osc_server = RawOSCServer(
                 (
-                    constants.IP_LISTEN_ANY,
+                    utilities.get_ip_listen_any(settings.console_ip),
                     settings.repeater_receive_port,
                 ),
                 self.repeater_dispatcher,

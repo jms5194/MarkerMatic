@@ -1,4 +1,5 @@
 import inspect
+import ipaddress
 import os.path
 import threading
 import time
@@ -15,6 +16,17 @@ from consoles import CONSOLES, Console
 from constants import PyPubSubTopics
 from daws import DAWS, Daw
 from logger_config import logger
+
+
+def get_ip_listen_any(ip: str) -> str:
+    """Given a target device IP, returns the IP that should be bound to"""
+    address = ipaddress.ip_address(ip)
+    # If the IP is a loopback, listening on INADDR_ANY will fail on some OSes
+    # (observed on Windows). Listening on the loopback address doesn't
+    if address.is_loopback:
+        return ip
+    else:
+        return constants.IP_LISTEN_ANY
 
 
 class DawConsoleBridge:
