@@ -59,14 +59,3 @@ def is_windows() -> bool:
     """Return whether OS is Windows."""
     return sys.platform == "win32"
 
-
-def calculate_md5_checksum(file_path):
-    """Calculates the MD5 checksum of a given file."""
-    hasher = hashlib.md5()
-    with open(file_path, "rb") as f:  # Open in binary read mode
-        while True:
-            chunk = f.read(8192)  # Read in chunks for large files
-            if not chunk:
-                break
-            hasher.update(chunk)
-    return hasher.hexdigest()
