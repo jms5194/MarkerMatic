@@ -16,7 +16,7 @@ def verify_markermatic_bridge_in_user_dir():
     else:
         check_available_dir.mkdir(exist_ok=True)
     bridge_full_path = get_ableton_scripts_path() / "AbletonOSC"
-    logger.info(f"Checking for the AbletonOSC extension at {bridge_full_path}")
+    logger.info(f"Checking for the AbletonOSC script folder at {bridge_full_path}")
     source_loc = pathlib.Path(utilities.get_resources_directory_path())
     source_path = source_loc / "AbletonOSC"
 
@@ -26,19 +26,18 @@ def verify_markermatic_bridge_in_user_dir():
             # directory on the user's computer to make sure they are the same
             pass
     else:
-        os.makedirs(get_ableton_scripts_path(), exist_ok=True)
         copy_ableton_osc_script_to_user_folder(source_path)
         return False
 
-def copy_ableton_osc_script_to_user_folder(package_file):
-    destination_directory = get_ableton_scripts_path()
-    filename = os.path.basename(package_file)
-    destination_path = os.path.join(destination_directory, filename)
-    if os.path.exists(destination_path):
-        os.remove(destination_path)
-    shutil.copy(package_file, destination_path)
-    logger.info(f"Extension '{filename}' copied or replaced successfully.")
-    logger.info("Copied Markermatic Bridge to Bitwig extensions directory.")
+def copy_ableton_osc_script_to_user_folder(source_path):
+    destination_directory = get_ableton_scripts_path() / "AbletonOSC"
+    try:
+        shutil.copytree(source_path, destination_directory)
+        logger.info("AbletonOSC script folder copied or replaced successfully.")
+    except FileExistsError:
+        logger.error("Cannot copy AbletonOSC script, folder already exists")
+    except Exception as e:
+        logger.error(f"Unable to copy AbletonOSC script to user directory: {e}")
 
 
 def get_ableton_scripts_path() -> pathlib.Path:
