@@ -80,7 +80,7 @@ class Ableton(Daw):
 
     def _receive_ableton_OSC(self):
         # Receives and distributes OSC from Reaper, based on matching OSC values
-        self.ableton_dispatcher.map("/marker/*/name", self._marker_matcher)
+        self.ableton_dispatcher.map("/live/song/get/cue_points", self._marker_matcher)
         self.ableton_dispatcher.map("/play", self._current_transport_state)
         self.ableton_dispatcher.map("/record", self._current_transport_state)
         self.ableton_dispatcher.set_default_handler(self._message_received)
@@ -136,10 +136,6 @@ class Ableton(Daw):
             self.is_recording = False
             logger.info("Ableton is not recording")
 
-    def _refresh_control_surfaces(self) -> None:
-        with self.ableton_send_lock:
-            self.ableton_client.send_message("/action", 41743)
-
     def _goto_marker_by_id(self, marker_id):
         with self.ableton_send_lock:
             self.ableton_client.send_message("/marker", int(marker_id))
@@ -161,9 +157,7 @@ class Ableton(Daw):
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
             with self.ableton_send_lock:
-                self.ableton_client.send_message("/device/marker/count", 0)
-                # Is there a better way to handle this in OSC only? Max of 512 markers.
-                self.ableton_client.send_message("/device/marker/count", 512)
+                self.ableton_client.send_message("/live/song/get/cue_points", None)
 
     def _incoming_transport_action(self, transport_action: TransportAction):
         try:
