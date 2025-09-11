@@ -81,15 +81,13 @@ class Ableton(Daw):
     def _receive_ableton_OSC(self):
         # Receives and distributes OSC from Reaper, based on matching OSC values
         self.ableton_dispatcher.map("/live/song/get/cue_points", self._marker_matcher)
-        self.ableton_dispatcher.map("/play", self._current_transport_state)
-        self.ableton_dispatcher.map("/record", self._current_transport_state)
+        self.ableton_dispatcher.map("/live/song/get/is_playing", self._current_transport_state)
+        self.ableton_dispatcher.map("/live/song/get/session_record", self._current_transport_state)
         self.ableton_dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
             self._connected.set()
-            # Always refresh control surfaces on connection have Reaper's state
-            self._refresh_control_surfaces()
             pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
@@ -113,15 +111,15 @@ class Ableton(Daw):
         # Watches what the Ableton playhead is doing.
         playing = None
         recording = None
-        if osc_address == "/play":
-            if val == 0:
+        if osc_address == "/live/song/get/is_playing":
+            if val == False:
                 playing = False
-            elif val == 1:
+            elif val == True:
                 playing = True
-        elif osc_address == "/record":
-            if val == 0:
+        elif osc_address == "/live/song/get/session_record":
+            if val == True:
                 recording = False
-            elif val == 1:
+            elif val == False:
                 recording = True
         if playing is True:
             self.is_playing = True
@@ -129,7 +127,7 @@ class Ableton(Daw):
         elif playing is False:
             self.is_playing = False
             logger.info("Ableton is not playing")
-        if recording is True:
+        if recording is True and playing is True:
             self.is_recording = True
             logger.info("Ableton is recording")
         elif recording is False:
