@@ -127,16 +127,21 @@ class Ableton(Daw):
         elif playing is False:
             self.is_playing = False
             logger.info("Ableton is not playing")
-        if recording is True and playing is True:
+        if recording is True:
             self.is_recording = True
             logger.info("Ableton is recording")
         elif recording is False:
             self.is_recording = False
             logger.info("Ableton is not recording")
 
-    def _goto_marker_by_id(self, marker_id):
-        with self.ableton_send_lock:
-            self.ableton_client.send_message("/marker", int(marker_id))
+    def _goto_marker_by_name(self, marker_name):
+        from app_settings import settings
+        if self.is_playing is False:
+            if settings.name_only_match:
+                pass
+            else:
+                with self.ableton_send_lock:
+                    self.ableton_client.send_message("/live/song/cue_point/jump", marker_name)
 
     def _place_marker_with_name(self, marker_name: str):
         logger.info(f"Placed marker for cue: {marker_name}")
@@ -199,7 +204,7 @@ class Ableton(Daw):
             settings.marker_mode is PlaybackState.PLAYBACK_TRACK
             and self.is_playing is False
         ):
-            self.get_marker_id_by_name(cue)
+            self._goto_marker_by_name(cue)
 
     def _shutdown_servers(self):
         try:
