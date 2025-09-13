@@ -34,9 +34,7 @@ class DawConsoleBridge:
     _threads: List[threading.Thread] = list()
 
     def __init__(self):
-        logger.info("Initializing ConsoleMarkerBridge")
-        self.ini_path = ""
-        self.config_dir = ""
+        logger.info(f"Initializing DawConsoleBridge, Version {constants.VERSION}")
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
