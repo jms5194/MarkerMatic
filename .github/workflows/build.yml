@@ -24,6 +24,14 @@ jobs:
           prerelease: false
           generate_release_notes: false
 
+  ci_builds:
+    # Trigger standalone CI builds after release has been created to upload assets to
+    needs: create_release
+    runs-on: ubuntu-latest
+    name: Trigger CI Builds
+    steps:
+      - name: Trigger CI builds
+        run: 'curl --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
 
   build:
     # When create_release is finished
@@ -31,21 +39,17 @@ jobs:
 
     strategy:
       matrix:
-        # Building for Mac silicon, Mac Intel, and Windows
-        os: [macos-x86, macos-arm64, windows-latest]
+        # Building for Mac Intel, Mac ARM
+        os: [macos-x86, macos-arm64]
         include:
           - os: macos-x86
-            python-version: '3.12'
+            python-version: "3.12"
             target: macos-x86
             runs-on: macos-13
           - os: macos-arm64
-            python-version: '3.12'
+            python-version: "3.12"
             target: macos-arm64
             runs-on: macos-latest
-          - os: windows-latest
-            python-version: '3.12'
-            target: windows
-            runs-on: windows-latest
     # Run the build on all of the matrix of systems above
     runs-on: ${{ matrix.runs-on }}
 
@@ -101,14 +105,6 @@ jobs:
           echo "LOCAL_RELEASE_TAG=${GITHUB_REF_NAME}" >> .env
           echo "LOCAL_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> .env
 
-      - name: Write .env file Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          @"
-          LOCAL_RELEASE_TAG=$env:GITHUB_REF_NAME
-          LOCAL_RELEASE_DATE=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
-          "@ | Out-File -FilePath .env -Encoding ASCII
-        shell: pwsh
       # Build app with Pyinstaller on Mac
       - name: Build with Py2App (MacOS)
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
@@ -116,22 +112,6 @@ jobs:
           python setup.py py2app
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
-      # Build app with Pyinstaller on Windows
-      - name: Build with PyInstaller (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          pip install pyinstaller==6.13.0
-          pip install pyinstaller-hooks-contrib==2025.4
-          if ("${{ github.event_name }}" -eq "pull_request") {
-            pyinstaller --clean --noconfirm pyinstaller.spec -- --debug
-          } else {
-            pyinstaller --clean --noconfirm pyinstaller.spec --
-          }
-      - name: Build Windows installer (Inno Setup)
-        if: matrix.os == 'windows-latest'
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-        with:
-          path: innosetup.iss
 
       - name: Codesign Application for Notarization
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
@@ -194,7 +174,6 @@ jobs:
             i=$((i+1))
           done
 
-
       # Add the built binaries to the release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -205,4 +184,3 @@ jobs:
           files: |
             MarkerMatic\ Installer-macos-arm64.dmg
             MarkerMatic\ Installer-macos-x86.dmg
-            MarkerMatic\ Installer.exe
