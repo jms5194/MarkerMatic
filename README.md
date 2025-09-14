@@ -11,6 +11,6 @@ If you find MarkerMatic useful, please consider becoming a GitHub Sponsor or don
 
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-grey?logo=GitHub)](https://github.com/sponsors/jms5194) [![Ko-fi](https://img.shields.io/badge/Ko--fi-grey?logo=kofi)][kofi]
 
-[latest-release]: https://github.com/jms5194/Digico-Reaper-Link/releases/latest
+[latest-release]: https://github.com/jms5194/MarkerMatic/releases/latest
 [website]: https://markermatic.com/
 [kofi]: https://ko-fi.com/justinstasiw
