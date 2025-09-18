@@ -119,25 +119,25 @@ class ProTools(Daw):
                 name_to_match = " ".join(name_to_match)
             with self.pt_send_lock:
                 mem_locs = self.pt_engine_connection.get_memory_locations()
-                for pt.MemoryLocation in mem_locs:
-                    try:
-                        test_name = pt.MemoryLocation.name
-                        if settings.name_only_match:
-                            test_name = test_name.split(" ")
-                            test_name = test_name[1:]
-                            test_name = " ".join(test_name)
-                        if name_to_match == test_name:
-                            self._goto_marker_by_loc(pt.MemoryLocation)
-                    except Exception:
-                        logger.error("No matching memory location found")
-                    except grpc._channel._InactiveRpcError:
-                        pub.sendMessage(
-                            PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
-                        )
-                        logger.error("Pro Tools connection lost, Retrying connection")
-                        self._open_protools_connection()
+            for memory_loc in mem_locs:
+                try:
+                    test_name = memory_loc.name
+                    if settings.name_only_match:
+                        test_name = test_name.split(" ")
+                        test_name = test_name[1:]
+                        test_name = " ".join(test_name)
+                    if name_to_match == test_name:
+                        self._goto_marker_by_loc(memory_loc)
+                except Exception:
+                    logger.error("No matching memory location found")
+                except grpc._channel._InactiveRpcError:
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
 
-    def _goto_marker_by_loc(self, memory_loc):
+    def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
         # Jump playhead to the given memory location
         match_loc_time = str(memory_loc.start_time)
         with self.pt_send_lock:
