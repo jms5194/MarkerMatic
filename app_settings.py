@@ -30,6 +30,7 @@ class ThreadSafeSettings:
             "mmc_control_enabled": False,
             "external_control_osc_port": 49103,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
+            "allow_loading_while_playing": False,
         }
 
     @property
@@ -233,6 +234,16 @@ class ThreadSafeSettings:
         with self._lock:
             self._settings["external_control_midi_port"] = value
 
+    @property
+    def allow_loading_while_playing(self) -> bool:
+        with self._lock:
+            return self._settings["allow_loading_while_playing"]
+
+    @allow_loading_while_playing.setter
+    def allow_loading_while_playing(self, value: bool):
+        with self._lock:
+            self._settings["allow_loading_while_playing"] = value
+
     def update_from_config_file(self, path: str) -> None:
         """Updates the currently loaded settings from the contents of the config file"""
         logger.info("Loading settings from config file")
@@ -274,6 +285,7 @@ class ThreadSafeSettings:
                 "name_only_match": "name_only_match",
                 "always_on_top": "always_on_top",
                 "mmc_control_enabled": "mmc_control_enabled",
+                "allow_loading_while_playing": "allow_loading_while_playing",
             }
             for settings_name, config_name in boolean_properties.items():
                 self._settings[settings_name] = config.getboolean(
