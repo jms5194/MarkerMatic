@@ -19,7 +19,7 @@ from app_settings import settings
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import Daw
-from external_control import get_midi_ports
+import external_control
 from logger_config import logger
 from utilities import DawConsoleBridge
 
@@ -732,15 +732,11 @@ class PrefsPanel(wx.Panel):
         external_control_section.Add(
             wx.StaticText(self, label="MIDI port:", style=wx.ALIGN_RIGHT)
         )
-        available_ports = [constants.MIDI_PORT_NONE]
-        available_ports.extend(get_midi_ports())
-        self.external_control_midi_port_control = wx.Choice(
-            self, choices=available_ports, style=wx.TE_CENTER
-        )
-        if settings.external_control_midi_port in available_ports:
-            self.external_control_midi_port_control.SetSelection(
-                available_ports.index(settings.external_control_midi_port)
-            )
+        self.external_control_midi_port_control = wx.Choice(self, style=wx.TE_CENTER)
+        # Set the Choice's options based off the cached values
+        self.update_midi_ports(external_control.get_midi_ports())
+        # Trigger a refresh with the callback, which will update the Choice
+        external_control.refresh_midi_ports(self.update_midi_ports)
         external_control_section.Add(
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -926,6 +922,19 @@ class PrefsPanel(wx.Panel):
                 # Put the focus back on the bad field
                 wx.CallAfter(self.console_ip_control.SetFocus)
 
+    def update_midi_ports(self, ports: list[str]) -> None:
+        def update(self: PrefsPanel, ports: list[str]) -> None:
+            self.external_control_midi_port_control.Set(ports)
+            if settings.external_control_midi_port in ports:
+                self.external_control_midi_port_control.SetSelection(
+                    ports.index(settings.external_control_midi_port)
+                )
+
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            update(self, ports)
+        else:
+            wx.CallAfter(update, self, ports)
+
 
 if __name__ == "__main__":
     try:
@@ -935,6 +944,7 @@ if __name__ == "__main__":
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
         app.SetTopWindow(frame)
+        external_control.refresh_midi_ports()
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)
