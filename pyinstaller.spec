@@ -3,8 +3,6 @@ import argparse
 import os
 import sys
 
-from PyInstaller.utils.hooks import collect_all
-
 sys.path.insert(0, os.path.dirname(SPEC))
 
 import constants
@@ -15,7 +13,6 @@ parser.add_argument("--debug", action="store_true")
 args = parser.parse_args()
 
 datas = [
-    (".env", "."),
     (f"resources/{constants.ICON_WIN_FILENAME}", "./resources"),
     ("resources/icons", "./resources/icons"),
     (

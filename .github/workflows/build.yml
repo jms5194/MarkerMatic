@@ -43,11 +43,9 @@ jobs:
         os: [macos-x86, macos-arm64]
         include:
           - os: macos-x86
-            python-version: "3.12"
             target: macos-x86
-            runs-on: macos-13
+            runs-on: macos-latest
           - os: macos-arm64
-            python-version: "3.12"
             target: macos-arm64
             runs-on: macos-latest
     # Run the build on all of the matrix of systems above
@@ -59,8 +57,6 @@ jobs:
       # Get python installed on the runner
       - name: Set up Python
         uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
       # Upgrade Pip and install dependencies
       - name: Install dependencies
         run: |
