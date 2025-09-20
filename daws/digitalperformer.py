@@ -3,7 +3,8 @@ import time
 from typing import Any, Callable
 
 from pubsub import pub
-from pythonosc import dispatcher, osc_tcp_server, tcp_client
+from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message
+from pythonosc.osc_message import OscMessage
 
 from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
 
@@ -110,7 +111,7 @@ class DigitalPerformer(Daw):
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
-        self.digitalperformer_dispatcher.map("/marker/*/name", self._marker_matcher)
+        self.digitalperformer_dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_dispatcher.map("/TransportState", self._current_transport_state)
         self.digitalperformer_dispatcher.set_default_handler(self._message_received)
 
@@ -164,7 +165,7 @@ class DigitalPerformer(Daw):
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send_message("/API_Version/Get", None)
+            self.digitalperformer_client.send(OscMessage("/API_Version/Get", None))
 
     def _goto_marker_by_id(self, marker_id):
         with self.digitalperformer_send_lock:
@@ -187,9 +188,7 @@ class DigitalPerformer(Daw):
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
             with self.digitalperformer_send_lock:
-                self.reaper_client.send_message("/device/marker/count", 0)
-                # Is there a better way to handle this in OSC only? Max of 512 markers.
-                self.reaper_client.send_message("/device/marker/count", 512)
+                self.digitalperformer_client.send(OscMessage("/MarkersSelList/Get_NewSelList", None))
 
     def _incoming_transport_action(self, transport_action: TransportAction):
         try:
@@ -204,11 +203,11 @@ class DigitalPerformer(Daw):
 
     def _digitalperformer_play(self):
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send_message("/TransportState", 2)
+            self.digitalperformer_client.send(OscMessage("/TransportState", 2))
 
     def _digitalperformer_stop(self):
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send_message("/TransportState", 0)
+            self.digitalperformer_client.send(OscMessage("/TransportState", 0))
 
     def _digitalperformer_rec(self):
         from app_settings import settings
