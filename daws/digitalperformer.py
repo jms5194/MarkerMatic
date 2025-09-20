@@ -41,11 +41,11 @@ class DigitalPerformer(Daw):
 
     def __init__(self):
         super().__init__()
-        self.reaper_send_lock = threading.Lock()
+        self.digitalperformer_send_lock = threading.Lock()
         self.name_to_match = ""
         self.is_playing = False
         self.is_recording = False
-        self.reaper_osc_server = None
+        self.digitalperformer_osc_server = None
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
@@ -170,16 +170,16 @@ class DigitalPerformer(Daw):
             logger.info("Reaper is not recording")
 
     def _refresh_control_surfaces(self) -> None:
-        with self.reaper_send_lock:
+        with self.digitalperformer_send_lock:
             self.reaper_client.send_message("/action", 41743)
 
     def _goto_marker_by_id(self, marker_id):
-        with self.reaper_send_lock:
+        with self.digitalperformer_send_lock:
             self.reaper_client.send_message("/marker", int(marker_id))
 
     def _place_marker_with_name(self, marker_name: str):
         logger.info(f"Placed marker for cue: {marker_name}")
-        with self.reaper_send_lock:
+        with self.digitalperformer_send_lock:
             self.reaper_client.send_message("/action", 40157)
             self.reaper_client.send_message("/lastmarker/name", marker_name)
 
@@ -193,7 +193,7 @@ class DigitalPerformer(Daw):
                 self.name_to_match = self.name_to_match.split(" ")
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
-            with self.reaper_send_lock:
+            with self.digitalperformer_send_lock:
                 self.reaper_client.send_message("/device/marker/count", 0)
                 # Is there a better way to handle this in OSC only? Max of 512 markers.
                 self.reaper_client.send_message("/device/marker/count", 512)
@@ -201,33 +201,31 @@ class DigitalPerformer(Daw):
     def _incoming_transport_action(self, transport_action: TransportAction):
         try:
             if transport_action is TransportAction.PLAY:
-                self._reaper_play()
+                self._digitalperformer_play()
             elif transport_action is TransportAction.STOP:
-                self._reaper_stop()
+                self._digitalperformer_stop()
             elif transport_action is TransportAction.RECORD:
-                self._reaper_rec()
+                self._digitalperformer_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _reaper_play(self):
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1007)
+    def _digitalperformer_play(self):
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/TransportState", 2)
 
-    def _reaper_stop(self):
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1016)
+    def _digitalperformer_stop(self):
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/TransportState", 0)
 
-    def _reaper_rec(self):
-        # Sends action to skip to end of project and then record, to prevent overwrites
+    def _digitalperformer_rec(self):
         from app_settings import settings
 
         settings.marker_mode = PlaybackState.RECORDING
         pub.sendMessage(
             PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
         )
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 40043)
-            self.reaper_client.send_message("/action", 1013)
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/TransportState", 4)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
@@ -245,9 +243,9 @@ class DigitalPerformer(Daw):
 
     def _shutdown_servers(self):
         try:
-            if self.reaper_osc_server:
-                self.reaper_osc_server.shutdown()
-                self.reaper_osc_server.server_close()
-            logger.info("Reaper OSC Server shutdown completed")
+            if self.digitalperformer_osc_server:
+                self.digitalperformer_osc_server.shutdown()
+                self.digitalperformer_osc_server.server_close()
+            logger.info("Digital Performer OSC Server shutdown completed")
         except Exception as e:
-            logger.error(f"Error shutting down Reaper server: {e}")
+            logger.error(f"Error shutting down Digital Performer server: {e}")
