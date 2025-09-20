@@ -302,22 +302,16 @@ class MainPanel(wx.Window):
             self.update_daw_connection_status, PyPubSubTopics.DAW_CONNECTION_STATUS
         )
         pub.subscribe(self.call_for_daw_reset, PyPubSubTopics.REQUEST_DAW_RESTART)
-        pub.subscribe(self.update_mode_select, PyPubSubTopics.CHANGE_PLAYBACK_STATE)
+        pub.subscribe(self.update_playback_state, PyPubSubTopics.CHANGE_PLAYBACK_STATE)
         MainWindow.BridgeFunctions.start_threads()
         # Start a timer for console timeout
         self.timer_lock = threading.Lock()
         self.configure_timers()
 
     def _mode_button_pressed(self, event: wx.CommandEvent) -> None:
-        for button in self._mode_buttons:
-            if button is event.GetEventObject() and event.IsChecked():
-                button.Disable()
-                if button.playback_state in PlaybackState:
-                    logger.info(f"marker_mode set to {button.playback_state}")
-                    settings.marker_mode = button.playback_state
-            else:
-                button.Enable()
-                button.SetValue(False)
+        button = event.GetEventObject()
+        if isinstance(button, ui.NoBorderBitmapToggle):
+            self.update_playback_state(button.playback_state)
 
     @staticmethod
     def place_marker(e):
@@ -326,13 +320,25 @@ class MainPanel(wx.Window):
             PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name="Marker from UI"
         )
 
-    def update_mode_select(self, selected_mode: PlaybackState):
-        if selected_mode is PlaybackState.RECORDING:
-            wx.CallAfter(self.mode_record_button.SetValue, True)
-        elif selected_mode is PlaybackState.PLAYBACK_TRACK:
-            wx.CallAfter(self.mode_playbacktracking_button.SetValue, True)
-        elif selected_mode is PlaybackState.PLAYBACK_NO_TRACK:
-            wx.CallAfter(self.mode_playbacknotrack_button.SetValue, True)
+    def update_playback_state(self, selected_mode: PlaybackState):
+        """Updates the application's playback state, and triggers a GUI
+        update"""
+        logger.info(f"{selected_mode} playback state selected")
+        settings.marker_mode = selected_mode
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            self._update_mode_select(selected_mode)
+        else:
+            wx.CallAfter(self._update_mode_select, selected_mode)
+
+    def _update_mode_select(self, selected_mode: PlaybackState) -> None:
+        """Handles updating the GUI's mode buttons"""
+        for button in self._mode_buttons:
+            if button.playback_state is selected_mode:
+                button.SetValue(True)
+                button.Disable()
+            else:
+                button.SetValue(False)
+                button.Enable()
 
     def configure_timers(self):
         # Builds a 5-second non-blocking timer for console response timeout.
