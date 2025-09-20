@@ -59,9 +59,6 @@ class DigitalPerformer(Daw):
     ) -> None:
         logger.info("Starting Digital Performer Connection threads")
         self._shutdown_server_event.clear()
-        #start_managed_thread(
-        #    "validate_reaper_prefs_thread", self._validate_reaper_prefs
-        #)
         start_managed_thread("daw_connection_thread", self._build_digitalperformer_osc_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
@@ -96,15 +93,15 @@ class DigitalPerformer(Daw):
         from app_settings import settings
 
         logger.info("Starting Digital Performer OSC server")
-        self.reaper_client = tcp_client.SimpleTCPClient(
-            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port()
+        self.digitalperformer_client = tcp_client.TCPClient(
+            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
         )
         self.digitalperformer_dispatcher = dispatcher.Dispatcher()
         self._receive_digitalperformer_OSC()
         try:
             self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
                 (constants.IP_LOOPBACK, settings.reaper_receive_port),
-                self.digitalperformer_dispatcher,
+                self.digitalperformer_dispatcher, mode= "1.0",
             )
             logger.info("Digital Performer OSC server started")
             self.digitalperformer_osc_server.serve_forever()
@@ -114,15 +111,12 @@ class DigitalPerformer(Daw):
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
         self.digitalperformer_dispatcher.map("/marker/*/name", self._marker_matcher)
-        self.digitalperformer_dispatcher.map("/play", self._current_transport_state)
-        self.digitalperformer_dispatcher.map("/record", self._current_transport_state)
+        self.digitalperformer_dispatcher.map("/TransportState", self._current_transport_state)
         self.digitalperformer_dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
             self._connected.set()
-            # Always refresh control surfaces on connection have Reaper's state
-            self._refresh_control_surfaces()
             pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
@@ -142,36 +136,35 @@ class DigitalPerformer(Daw):
             self._goto_marker_by_id(marker_id)
 
     def _current_transport_state(self, osc_address, val):
-        self._message_received()
-        # Watches what the Reaper playhead is doing.
+        # Watches what the Digital Performer playhead is doing.
         playing = None
         recording = None
-        if osc_address == "/play":
+        if osc_address == "/TransportState":
             if val == 0:
                 playing = False
-            elif val == 1:
-                playing = True
-        elif osc_address == "/record":
-            if val == 0:
                 recording = False
             elif val == 1:
+                playing = True
+                recording = False
+            elif val == 4:
                 recording = True
+                playing = True
         if playing is True:
             self.is_playing = True
-            logger.info("Reaper is playing")
+            logger.info("Digital Performer is playing")
         elif playing is False:
             self.is_playing = False
-            logger.info("Reaper is not playing")
+            logger.info("Digital Performer is not playing")
         if recording is True:
             self.is_recording = True
-            logger.info("Reaper is recording")
+            logger.info("Digital Performer is recording")
         elif recording is False:
             self.is_recording = False
-            logger.info("Reaper is not recording")
+            logger.info("Digital Performer is not recording")
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
-            self.reaper_client.send_message("/action", 41743)
+            self.digitalperformer_client.send_message("/API_Version/Get", None)
 
     def _goto_marker_by_id(self, marker_id):
         with self.digitalperformer_send_lock:
