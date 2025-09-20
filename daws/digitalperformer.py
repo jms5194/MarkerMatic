@@ -3,7 +3,7 @@ import time
 from typing import Any, Callable
 
 from pubsub import pub
-from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message
+from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message_builder
 from pythonosc.osc_message import OscMessage
 
 from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
@@ -165,7 +165,9 @@ class DigitalPerformer(Daw):
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send(OscMessage("/API_Version/Get", None))
+            msg = osc_message_builder.OscMessageBuilder(address="/API_Version/Get")
+            msg.add_arg(None)
+            self.digitalperformer_client.send(msg)
 
     def _goto_marker_by_id(self, marker_id):
         with self.digitalperformer_send_lock:
@@ -188,7 +190,10 @@ class DigitalPerformer(Daw):
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
             with self.digitalperformer_send_lock:
-                self.digitalperformer_client.send(OscMessage("/MarkersSelList/Get_NewSelList", None))
+                msg = osc_message_builder.OscMessageBuilder(address="/MarkersSelList/Get_NewSelList")
+                msg.add_arg(None)
+                osc_message = msg.build()
+                self.digitalperformer_client.send(osc_message)
 
     def _incoming_transport_action(self, transport_action: TransportAction):
         try:
@@ -203,11 +208,17 @@ class DigitalPerformer(Daw):
 
     def _digitalperformer_play(self):
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send(OscMessage("/TransportState", 2))
+            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
+            msg.add_arg(2)
+            osc_message = msg.build()
+            self.digitalperformer_client.send(osc_message)
 
     def _digitalperformer_stop(self):
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send(OscMessage("/TransportState", 0))
+            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
+            msg.add_arg(0)
+            osc_message = msg.build()
+            self.digitalperformer_client.send(osc_message)
 
     def _digitalperformer_rec(self):
         from app_settings import settings
@@ -217,7 +228,10 @@ class DigitalPerformer(Daw):
             PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
         )
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send_message("/TransportState", 4)
+            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
+            msg.add_arg(4)
+            osc_message = msg.build()
+            self.digitalperformer_client.send(osc_message)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
