@@ -167,7 +167,8 @@ class DigitalPerformer(Daw):
         with self.digitalperformer_send_lock:
             msg = osc_message_builder.OscMessageBuilder(address="/API_Version/Get")
             msg.add_arg(None)
-            self.digitalperformer_client.send(msg)
+            osc_message = msg.build()
+            self.digitalperformer_client.send(osc_message)
 
     def _goto_marker_by_id(self, marker_id):
         with self.digitalperformer_send_lock:
