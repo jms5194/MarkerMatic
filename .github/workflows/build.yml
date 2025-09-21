@@ -43,13 +43,11 @@ jobs:
         os: [macos-x86, macos-arm64]
         include:
           - os: macos-x86
-            target: macos-x86
-            runs-on: macos-latest
+            arch: x64
           - os: macos-arm64
-            target: macos-arm64
-            runs-on: macos-latest
-    # Run the build on all of the matrix of systems above
-    runs-on: ${{ matrix.runs-on }}
+            arch: arm64
+    # macos-latest is ARM for macOS >= 14
+    runs-on: macos-latest
 
     steps:
       # Checkout the project from Github
@@ -57,6 +55,8 @@ jobs:
       # Get python installed on the runner
       - name: Set up Python
         uses: actions/setup-python@v5
+        with:
+          architecture: ${{ matrix.arch }}
       # Upgrade Pip and install dependencies
       - name: Install dependencies
         run: |
@@ -159,7 +159,7 @@ jobs:
             --window-pos 200 120 \
             --window-size 800 400 \
             --hide-extension "MarkerMatic.app" \
-            "MarkerMatic Installer"-${{ matrix.target }}.dmg \
+            "MarkerMatic Installer"-${{ matrix.os }}.dmg \
             "dist/MarkerMatic.app"
           do
             if [ $i -eq $max_tries ]
