@@ -44,6 +44,7 @@ class DigitalPerformer(Daw):
         super().__init__()
         self.digitalperformer_send_lock = threading.Lock()
         self.name_to_match = ""
+        self.new_marker_name = ""
         self.is_playing = False
         self.is_recording = False
         self.digitalperformer_osc_server = None
@@ -175,10 +176,25 @@ class DigitalPerformer(Daw):
             self.reaper_client.send_message("/marker", int(marker_id))
 
     def _place_marker_with_name(self, marker_name: str):
-        logger.info(f"Placed marker for cue: {marker_name}")
         with self.digitalperformer_send_lock:
-            self.reaper_client.send_message("/action", 40157)
-            self.reaper_client.send_message("/lastmarker/name", marker_name)
+            self.new_marker_name = marker_name
+            # Get our current playhead time in samples
+            msg = osc_message_builder.OscMessageBuilder(address="/Get_Time")
+            msg.add_arg(6)
+            osc_message = msg.build()
+            self.digitalperformer_client.send(osc_message)
+
+    def _place_marker_at_time(self, osc_address, *args):
+        if osc_address == "/Get_Time":
+            cur_pos = args[0]
+            with self.digitalperformer_send_lock:
+                msg = osc_message_builder.OscMessageBuilder(address="/MakeMarker")
+                msg.add_arg(6)
+                msg.add_arg(cur_pos)
+                msg.add_arg(self.new_marker_name)
+                osc_message = msg.build()
+                self.digitalperformer_client.send(osc_message)
+            logger.info(f"Placed marker for cue: {self.new_marker_name}")
 
     def get_marker_id_by_name(self, name: str):
         # Asks for current marker information based upon number of markers.
