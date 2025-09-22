@@ -12,7 +12,7 @@ import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
-from . import Daw, configure_reaper
+from . import Daw
 
 class ZeroConfListener(ServiceListener):
     def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
@@ -84,7 +84,8 @@ class DigitalPerformer(Daw):
     def _get_current_digital_performer_osc_port(self):
         zeroconf = Zeroconf(interfaces= ['127.0.0.1'])
         listener = ZeroConfListener()
-        browser = ServiceBrowser(zeroconf,"_osc._tcp.local", listener)
+        browser = ServiceBrowser(zeroconf,"_osc._tcp.local.", listener)
+        print(browser)
         try:
             logger.info("Attempting to discover Digital Performer OSC port")
         finally:
@@ -93,22 +94,22 @@ class DigitalPerformer(Daw):
     def _build_digitalperformer_osc_servers(self):
         # Connect to Digital Performer via OSC
         from app_settings import settings
-
-        logger.info("Starting Digital Performer OSC server")
-        self.digitalperformer_client = tcp_client.TCPClient(
-            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
-        )
-        self.digitalperformer_dispatcher = dispatcher.Dispatcher()
-        self._receive_digitalperformer_OSC()
-        try:
-            self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
-                (constants.IP_LOOPBACK, settings.reaper_receive_port),
-                self.digitalperformer_dispatcher, mode= "1.0",
-            )
-            logger.info("Digital Performer OSC server started")
-            self.digitalperformer_osc_server.serve_forever()
-        except Exception as e:
-            logger.error(f"Digital Performer OSC server startup error: {e}")
+        self._get_current_digital_performer_osc_port()
+        #logger.info("Starting Digital Performer OSC server")
+        #self.digitalperformer_client = tcp_client.TCPClient(
+        #    constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
+        #)
+        #self.digitalperformer_dispatcher = dispatcher.Dispatcher()
+        #self._receive_digitalperformer_OSC()
+        #try:
+        #    self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
+        #        (constants.IP_LOOPBACK, settings.reaper_receive_port),
+        #        self.digitalperformer_dispatcher, mode= "1.0",
+        #    )
+        #    logger.info("Digital Performer OSC server started")
+        #    self.digitalperformer_osc_server.serve_forever()
+        #except Exception as e:
+        #    logger.error(f"Digital Performer OSC server startup error: {e}")
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
