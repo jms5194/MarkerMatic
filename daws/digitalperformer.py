@@ -7,6 +7,7 @@ from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message_builde
 from pythonosc.osc_message import OscMessage
 
 from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+import socket
 
 import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
@@ -25,6 +26,7 @@ class ZeroConfListener(ServiceListener):
 
     def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
         """Called when a new service is discovered."""
+        print("SERVICE")
         info = zc.get_service_info(type_, name)
         if info:  # Ensure service info is available
             print(f"Service {name} added, service info: {info}")
@@ -82,34 +84,38 @@ class DigitalPerformer(Daw):
                     self._connection_timeout_counter = 0
 
     def _get_current_digital_performer_osc_port(self):
-        zeroconf = Zeroconf(interfaces= ['127.0.0.1'])
-        listener = ZeroConfListener()
-        browser = ServiceBrowser(zeroconf,"_osc._tcp.local.", listener)
-        print(browser)
-        try:
-            logger.info("Attempting to discover Digital Performer OSC port")
-        finally:
-            zeroconf.close()
+        zeroconf_type = "_osc._tcp.local."
+        zeroconf_name = "Digital Performer OSC"
+        zeroconf = Zeroconf()
+        dp_port = None
+        while not dp_port:
+            try:
+                dp_port =  zeroconf.get_service_info(zeroconf_type, zeroconf_name + "." + zeroconf_type).port
+            except AttributeError as e:
+                logger.info("No Digital Performer instance running.")
+            time.sleep(1)
+        zeroconf.close()
+        logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
+        return dp_port
 
     def _build_digitalperformer_osc_servers(self):
-        # Connect to Digital Performer via OSC
+        #Connect to Digital Performer via OSC
         from app_settings import settings
-        self._get_current_digital_performer_osc_port()
-        #logger.info("Starting Digital Performer OSC server")
-        #self.digitalperformer_client = tcp_client.TCPClient(
-        #    constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
-        #)
-        #self.digitalperformer_dispatcher = dispatcher.Dispatcher()
-        #self._receive_digitalperformer_OSC()
-        #try:
-        #    self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
-        #        (constants.IP_LOOPBACK, settings.reaper_receive_port),
-        #        self.digitalperformer_dispatcher, mode= "1.0",
-        #    )
-        #    logger.info("Digital Performer OSC server started")
-        #    self.digitalperformer_osc_server.serve_forever()
-        #except Exception as e:
-        #    logger.error(f"Digital Performer OSC server startup error: {e}")
+        logger.info("Starting Digital Performer OSC server")
+        self.digitalperformer_client = tcp_client.TCPClient(
+            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
+        )
+        self.digitalperformer_dispatcher = dispatcher.Dispatcher()
+        self._receive_digitalperformer_OSC()
+        try:
+            self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
+                (constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port()),
+                self.digitalperformer_dispatcher, mode= "1.0",
+            )
+            logger.info("Digital Performer OSC server started")
+            self.digitalperformer_osc_server.serve_forever()
+        except Exception as e:
+            logger.error(f"Digital Performer OSC server startup error: {e}")
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
@@ -188,6 +194,7 @@ class DigitalPerformer(Daw):
     def _place_marker_at_time(self, osc_address, *args):
         if osc_address == "/Get_Time":
             cur_pos = args[0]
+            print(cur_pos)
             with self.digitalperformer_send_lock:
                 msg = osc_message_builder.OscMessageBuilder(address="/MakeMarker")
                 msg.add_arg(6)
