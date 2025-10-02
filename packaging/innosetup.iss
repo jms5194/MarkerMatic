@@ -33,9 +33,9 @@ LicenseFile=..\LICENSE
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=..\dist
+OutputDir=..\dist\
 OutputBaseFilename=MarkerMatic Installer
-SetupIconFile=..\resources\markermaticinstaller.ico
+SetupIconFile=markermaticinstaller.ico
 SolidCompression=yes
 WizardStyle=modern
 
