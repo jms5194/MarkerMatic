@@ -2,9 +2,9 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "MarkerMatic"
-#define MyAppVersion "4.1.0"
-#define MyAppPublisher "JSSD"
-#define MyAppURL "http://www.markermatic.com"
+#define MyAppVersion GetVersionNumbersString("..\dist\MarkerMatic\MarkerMatic.exe")
+#define MyAppPublisher "Justin Stasiw"
+#define MyAppURL "https://markermatic.com"
 #define MyAppExeName "MarkerMatic.exe"
 
 [Setup]
@@ -29,13 +29,13 @@ ArchitecturesAllowed=x64compatible
 ; the 64-bit view of the registry.
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
-LicenseFile=LICENSE
+LicenseFile=..\LICENSE
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=/
+OutputDir=..\dist
 OutputBaseFilename=MarkerMatic Installer
-SetupIconFile=/resources/markermaticinstaller.ico
+SetupIconFile=..\resources\markermaticinstaller.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -46,7 +46,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "/dist/MarkerMatic.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\MarkerMatic\*"; DestDir: "{app}"; Flags: recursesubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
