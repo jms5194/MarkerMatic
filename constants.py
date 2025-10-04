@@ -1,4 +1,3 @@
-import datetime
 from enum import StrEnum, auto
 
 APPLICATION_NAME = "MarkerMatic"
@@ -7,16 +6,15 @@ APPLICATION_AUTHOR = "Justin Stasiw"
 APPLICATION_DESCRIPTION = (
     "A tool to automate cueing and marker placement between consoles and DAWs"
 )
-APPLICATION_COPYRIGHT = "© {} Justin Stasiw and Liam Steckler".format(
-    datetime.datetime.now().year
-)
+APPLICATION_COPYRIGHT = "© 2025 Justin Stasiw and Liam Steckler"
 BUNDLE_IDENTIFIER = "com.justinstasiw.markermatic"
 CONFIG_FILENAME = "settings.ini"
 CONFIG_FILENAME_LEGACY = "settingsV3.ini"
 ICON_MAC_FILENAME = "markermaticicon.icns"
 ICON_WIN_FILENAME = "markermaticicon.ico"
 LOG_FILENAME = "MarkerMatic.log"
-VERSION = "4.1.0"
+VERSION = "4.1.0 (Build 1000)"
+VERSION_EXTRA = "4.1.0.1000"
 WEBSITE = "https://markermatic.com"
 WEBSITE_DOCUMENTATION = "https://markermatic.com/docs"
 WEBSITE_LICENSE = "https://markermatic.com/license"
