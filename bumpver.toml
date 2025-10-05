@@ -1,8 +1,8 @@
 [bumpver]
 current_version = "v4.1.1+1002"
 version_pattern = "vMAJOR.MINOR.PATCH+BUILD"
-commit_message = "bump version {old_version} -> {new_version}"
-tag_message = "{new_version}"
+commit_message = "Bump version {old_version} -> {new_version}"
+tag_message = "vMAJOR.MINOR.PATCH (Build BUILD)"
 tag_scope = "branch"
 commit = true
 tag = true
