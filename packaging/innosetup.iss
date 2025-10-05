@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "MarkerMatic"
-#define MyAppVersion 4.1.1 (Build 1001)
+#define MyAppVersion "4.1.1 (Build 1001)"
 #define MyAppPublisher "Justin Stasiw"
 #define MyAppURL "https://markermatic.com"
 #define MyAppExeName "MarkerMatic.exe"

@@ -16,7 +16,7 @@ push = true
 
 ]
 "packaging/innosetup.iss" = [
-    "#define MyAppVersion MAJOR.MINOR.PATCH (Build BUILD)",
+    '#define MyAppVersion "MAJOR.MINOR.PATCH (Build BUILD)"',
     "AppCopyright=© YYYY",
     "VersionInfoProductVersion=MAJOR.MINOR.PATCH.BUILD",
 ]
