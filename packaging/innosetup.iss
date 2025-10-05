@@ -2,9 +2,9 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "MarkerMatic"
-#define MyAppVersion "4.2.0-beta.1"
-#define MyAppPublisher "JSSD"
-#define MyAppURL "http://www.markermatic.com"
+#define MyAppVersion "4.1.1 (Build 1004)"
+#define MyAppPublisher "Justin Stasiw"
+#define MyAppURL "https://markermatic.com"
 #define MyAppExeName "MarkerMatic.exe"
 
 [Setup]
@@ -14,10 +14,12 @@ AppId={{0BC748A0-B753-4C30-B4CA-07DDE8F3F6B0}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
+AppCopyright=© 2025 Justin Stasiw and Liam Steckler
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+VersionInfoProductVersion=4.1.1.1004
 DefaultDirName={autopf}\{#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
@@ -29,13 +31,13 @@ ArchitecturesAllowed=x64compatible
 ; the 64-bit view of the registry.
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
-LicenseFile=LICENSE
+LicenseFile=..\LICENSE
 ; Remove the following line to run in administrative install mode (install for all users).
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=/
+OutputDir=..\dist\
 OutputBaseFilename=MarkerMatic Installer
-SetupIconFile=/resources/markermaticinstaller.ico
+SetupIconFile=markermaticinstaller.ico
 SolidCompression=yes
 WizardStyle=modern
 
@@ -46,7 +48,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "/dist/MarkerMatic.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\MarkerMatic\*"; DestDir: "{app}"; Flags: recursesubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

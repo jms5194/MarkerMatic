@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(SPEC))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(SPEC), "..")))
 
 import constants
 
@@ -13,10 +13,10 @@ parser.add_argument("--debug", action="store_true")
 args = parser.parse_args()
 
 datas = [
-    (f"resources/{constants.ICON_WIN_FILENAME}", "./resources"),
-    ("resources/icons", "./resources/icons"),
+    (f"../resources/{constants.ICON_WIN_FILENAME}", "./resources"),
+    ("../resources/icons", "./resources/icons"),
     (
-        "resources/MarkerMatic-Bridge.bwextension",
+        "../resources/MarkerMatic-Bridge.bwextension",
         "./resources/MarkerMatic-Bridge.bwextension",
     ),
 ]
@@ -26,7 +26,7 @@ ws_hiddenimports = ["websockets", "websockets.legacy"]
 py4j_hiddenimports = ["py4j.java_collections"]
 
 a = Analysis(
-    ["main.py"],
+    ["../main.py"],
     pathex=[],
     binaries=[],
     datas=datas,
@@ -38,15 +38,17 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     noarchive=False,
+    optimize=0,
 )
 pyz = PYZ(a.pure)
+
 exe = EXE(
     pyz,
-    a.binaries,
-    a.datas,
     a.scripts,
+    [],
+    exclude_binaries=True,
     name=constants.APPLICATION_NAME,
-    icon=f"resources/{constants.ICON_WIN_FILENAME}",
+    icon=f"../resources/{constants.ICON_WIN_FILENAME}",
     debug=args.debug is not None and args.debug,
     bootloader_ignore_signals=False,
     strip=False,
@@ -57,4 +59,16 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
+    entitlements_file=None,
+    version="pyinstaller_version.txt",
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name=constants.APPLICATION_NAME,
 )

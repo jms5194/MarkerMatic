@@ -1,12 +1,21 @@
 altgraph==0.17.4
+bumpver==2025.1131
+click==8.3.0
+colorama==0.4.6
+Jinja2==3.1.6
+lexid==2021.1006
 macholib==1.16.3
+MarkupSafe==3.0.3
 modulegraph==0.19.6
 pip-licenses==5.0.0
 prettytable==3.16.0
 py2app==0.28.8
 pyinstaller==6.15.0
 pyinstaller-hooks-contrib==2025.8
+pyinstaller_versionfile==3.0.1
+PyYAML==6.0.3
 # Keep this version of setuptools, needed for py2app currently
 setuptools==70.3.0
+toml==0.10.2
 tomli==2.2.1
 wcwidth==0.2.13

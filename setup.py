@@ -5,11 +5,13 @@ Usage:
     python setup.py py2app
 """
 
-from pathlib import Path
-from setuptools import setup
-import constants
 import sys
+from pathlib import Path
+
 import google.protobuf
+from setuptools import setup
+
+import constants
 
 # This is a dumb workaround because otherwise the protobuf library can't be loaded as a
 # package by py2app. See https://github.com/ronaldoussoren/py2app/issues/495
@@ -38,10 +40,11 @@ OPTIONS = {
         "CFBundleDisplayName": constants.APPLICATION_NAME,
         "NSHumanReadableCopyright": constants.APPLICATION_COPYRIGHT,
         "CFBundleShortVersionString": constants.VERSION,
-        "CFBundleVersion": constants.VERSION,
+        "CFBundleVersion": constants.VERSION_EXTRA,
         "NSRequiresAquaSystemAppearance": False,
         "NSDocumentsFolderUsageDescription": f"{constants.APPLICATION_NAME} needs to install a Bitwig Studio extension to connect",
         "NSLocalNetworkUsageDescription": f"{constants.APPLICATION_NAME} communicates with your console to detect cue loads",
+        "NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac": True,
     },
     "packages": ["google.protobuf", "google._upb"],
 }
