@@ -89,6 +89,7 @@ class DawConsoleBridge:
         external_control_osc_port,
         external_control_midi_port,
         mmc_control_enabled,
+        allow_loading_while_playing,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
@@ -122,6 +123,9 @@ class DawConsoleBridge:
                 external_control_midi_port
             )
             updater["main"]["mmc_control_enabled"] = str(mmc_control_enabled)
+            updater["main"]["allow_loading_while_playing"] = str(
+                allow_loading_while_playing
+            )
         except Exception as e:
             logger.error(f"Failed to update config file: {e}")
         with open(self._ini_path, "w") as file:

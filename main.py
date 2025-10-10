@@ -678,6 +678,17 @@ class PrefsPanel(wx.Panel):
         app_settings_section = wx.FlexGridSizer(2, INTERNAL_SPACING, INTERNAL_SPACING)
         app_settings_section.AddGrowableCol(1)
         app_settings_section.SetFlexibleDirection(direction=wx.VERTICAL)
+        # Allow loading while playing
+        app_settings_section.AddStretchSpacer()
+        self.allow_loading_while_playing_checkbox = wx.CheckBox(
+            self, label="Allow loading while playing"
+        )
+        self.allow_loading_while_playing_checkbox.SetValue(
+            settings.allow_loading_while_playing
+        )
+        app_settings_section.Add(
+            self.allow_loading_while_playing_checkbox, flag=wx.EXPAND
+        )
         # Always On Top
         app_settings_section.Add(width=label_min_width, height=0)
         self.always_on_top_checkbox = wx.CheckBox(self, label="Always display on top")
@@ -865,6 +876,9 @@ class PrefsPanel(wx.Panel):
             settings.daw_type = self.daw_type_choice.GetString(
                 self.daw_type_choice.GetSelection()
             )
+            settings.allow_loading_while_playing = (
+                self.allow_loading_while_playing_checkbox.GetValue()
+            )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
             settings.external_control_osc_port = int(
                 self.external_control_osc_port_control.GetValue()
@@ -893,6 +907,7 @@ class PrefsPanel(wx.Panel):
                 external_control_osc_port=settings.external_control_osc_port,
                 external_control_midi_port=settings.external_control_midi_port,
                 mmc_control_enabled=settings.mmc_control_enabled,
+                allow_loading_while_playing=settings.allow_loading_while_playing,
             )
             MainWindow.BridgeFunctions.shutdown_and_restart_servers()
             # Close the preferences window when update is pressed.
