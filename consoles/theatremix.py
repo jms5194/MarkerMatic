@@ -51,7 +51,7 @@ class TheatreMix(Console):
         self, _address: str, cue_number: str, cue_name: Optional[str] = None, *_
     ) -> None:
         if cue_name is not None:
-            # Basic support for TheatreMix's cue names in an upcoming release
+            # Cue names are only supported in TheatreMix 3.4 or above
             cue_number = f"{cue_number} {cue_name}"
         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
         self._message_received()
