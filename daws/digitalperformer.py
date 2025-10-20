@@ -6,7 +6,8 @@ from pubsub import pub
 from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message_builder
 from pythonosc.osc_message import OscMessage
 
-from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+from zeroconf import ServiceListener, Zeroconf
+from zeroconf.asyncio import AsyncZeroconf, AsyncServiceInfo
 import socket
 
 import constants
@@ -14,6 +15,8 @@ from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw
+
+import asyncio
 
 class ZeroConfListener(ServiceListener):
     def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
@@ -63,7 +66,7 @@ class DigitalPerformer(Daw):
     ) -> None:
         logger.info("Starting Digital Performer Connection threads")
         self._shutdown_server_event.clear()
-        start_managed_thread("daw_connection_thread", self._build_digitalperformer_osc_servers)
+        start_managed_thread("daw_connection_thread", self.run_async_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
     def _daw_connection_monitor(self):
@@ -83,45 +86,42 @@ class DigitalPerformer(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-    def _get_current_digital_performer_osc_port(self):
+    async def _get_current_digital_performer_osc_port(self):
         zeroconf_type = "_osc._tcp.local."
         zeroconf_name = "Digital Performer OSC"
-        zeroconf = Zeroconf()
-        dp_port = None
-        while not dp_port:
-            try:
-                dp_port =  zeroconf.get_service_info(zeroconf_type, zeroconf_name + "." + zeroconf_type).port
-            except AttributeError as e:
-                logger.info("No Digital Performer instance running.")
-            time.sleep(1)
-        zeroconf.close()
-        logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
-        return dp_port
+
+        async with AsyncZeroconf() as azc:
+            info = None
+            while not info:
+                try:
+                    full_name = zeroconf_name + "." + zeroconf_type
+                    info = AsyncServiceInfo(zeroconf_type, full_name)
+                    success = await info.async_request(azc.zeroconf, timeout=1.0)
+                    if not success:
+                        logger.info("No Digital Performer instance running.")
+                        await asyncio.sleep(1)
+                        info = None
+                except Exception as e:
+                    logger.error(f"Zeroconf error: {e}")
+                    await asyncio.sleep(1)
+
+            dp_port = info.port
+            logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
+            return dp_port
+
 
     def _build_digitalperformer_osc_servers(self):
         #Connect to Digital Performer via OSC
         from app_settings import settings
         logger.info("Starting Digital Performer OSC server")
-        self.digitalperformer_client = tcp_client.TCPClient(
-            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode= '1.0',
-        )
-        self.digitalperformer_dispatcher = dispatcher.Dispatcher()
-        self._receive_digitalperformer_OSC()
-        try:
-            self.digitalperformer_osc_server = osc_tcp_server.ThreadingOSCTCPServer(
-                (constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port()),
-                self.digitalperformer_dispatcher, mode= "1.0",
-            )
-            logger.info("Digital Performer OSC server started")
-            self.digitalperformer_osc_server.serve_forever()
-        except Exception as e:
-            logger.error(f"Digital Performer OSC server startup error: {e}")
+
+
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
-        self.digitalperformer_dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
-        self.digitalperformer_dispatcher.map("/TransportState", self._current_transport_state)
-        self.digitalperformer_dispatcher.set_default_handler(self._message_received)
+        self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
+        self.digitalperformer_client.dispatcher.map("/TransportState", self._current_transport_state)
+        self.digitalperformer_client.dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
@@ -173,10 +173,7 @@ class DigitalPerformer(Daw):
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
-            msg = osc_message_builder.OscMessageBuilder(address="/API_Version/Get")
-            msg.add_arg(None)
-            osc_message = msg.build()
-            self.digitalperformer_client.send(osc_message)
+            self.digitalperformer_client.send_message("/API_Version/Get", None)
 
     def _goto_marker_by_id(self, marker_id):
         with self.digitalperformer_send_lock:
@@ -186,22 +183,14 @@ class DigitalPerformer(Daw):
         with self.digitalperformer_send_lock:
             self.new_marker_name = marker_name
             # Get our current playhead time in samples
-            msg = osc_message_builder.OscMessageBuilder(address="/Get_Time")
-            msg.add_arg(6)
-            osc_message = msg.build()
-            self.digitalperformer_client.send(osc_message)
+            self.digitalperformer_client.send_message("/Get_Time", 6)
 
     def _place_marker_at_time(self, osc_address, *args):
         if osc_address == "/Get_Time":
             cur_pos = args[0]
             print(cur_pos)
             with self.digitalperformer_send_lock:
-                msg = osc_message_builder.OscMessageBuilder(address="/MakeMarker")
-                msg.add_arg(6)
-                msg.add_arg(cur_pos)
-                msg.add_arg(self.new_marker_name)
-                osc_message = msg.build()
-                self.digitalperformer_client.send(osc_message)
+                self.digitalperformer_client.send_message("/MakeMarker", 6, cur_pos, self.new_marker_name)
             logger.info(f"Placed marker for cue: {self.new_marker_name}")
 
     def get_marker_id_by_name(self, name: str):
@@ -215,10 +204,7 @@ class DigitalPerformer(Daw):
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
             with self.digitalperformer_send_lock:
-                msg = osc_message_builder.OscMessageBuilder(address="/MarkersSelList/Get_NewSelList")
-                msg.add_arg(None)
-                osc_message = msg.build()
-                self.digitalperformer_client.send(osc_message)
+                self.digitalperformer_client.send_message("/MarkersSelList/Get_NewSelList", None)
 
     def _incoming_transport_action(self, transport_action: TransportAction):
         try:
@@ -233,17 +219,11 @@ class DigitalPerformer(Daw):
 
     def _digitalperformer_play(self):
         with self.digitalperformer_send_lock:
-            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
-            msg.add_arg(2)
-            osc_message = msg.build()
-            self.digitalperformer_client.send(osc_message)
+            self.digitalperformer_client.send_message("/TransportState", 2)
 
     def _digitalperformer_stop(self):
         with self.digitalperformer_send_lock:
-            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
-            msg.add_arg(0)
-            osc_message = msg.build()
-            self.digitalperformer_client.send(osc_message)
+            self.digitalperformer_client.send_message("/TransportState", 0)
 
     def _digitalperformer_rec(self):
         from app_settings import settings
@@ -253,10 +233,7 @@ class DigitalPerformer(Daw):
             PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
         )
         with self.digitalperformer_send_lock:
-            msg = osc_message_builder.OscMessageBuilder(address="/TransportState")
-            msg.add_arg(4)
-            osc_message = msg.build()
-            self.digitalperformer_client.send(osc_message)
+            self.digitalperformer_client.send_message("/TransportState", 4)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
