@@ -3,10 +3,9 @@ import time
 from typing import Any, Callable
 
 from pubsub import pub
-from pythonosc import dispatcher, osc_tcp_server, tcp_client, osc_message_builder
-from pythonosc.osc_message import OscMessage
+from pythonosc import tcp_client
 
-from zeroconf import ServiceListener, Zeroconf
+from zeroconf import ServiceListener, Zeroconf, ServiceInfo
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceInfo
 import socket
 
@@ -66,7 +65,7 @@ class DigitalPerformer(Daw):
     ) -> None:
         logger.info("Starting Digital Performer Connection threads")
         self._shutdown_server_event.clear()
-        start_managed_thread("daw_connection_thread", self.run_async_servers)
+        start_managed_thread("daw_connection_thread", self._build_digitalperformer_osc_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
     def _daw_connection_monitor(self):
@@ -86,24 +85,24 @@ class DigitalPerformer(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-    async def _get_current_digital_performer_osc_port(self):
+    def _get_current_digital_performer_osc_port(self):
         zeroconf_type = "_osc._tcp.local."
         zeroconf_name = "Digital Performer OSC"
 
-        async with AsyncZeroconf() as azc:
+        with Zeroconf() as zc:
             info = None
             while not info:
                 try:
                     full_name = zeroconf_name + "." + zeroconf_type
-                    info = AsyncServiceInfo(zeroconf_type, full_name)
-                    success = await info.async_request(azc.zeroconf, timeout=1.0)
+                    info = ServiceInfo(zeroconf_type, full_name)
+                    success = info.request(zc, timeout=1.0)
                     if not success:
                         logger.info("No Digital Performer instance running.")
-                        await asyncio.sleep(1)
+                        time.sleep(1)
                         info = None
                 except Exception as e:
                     logger.error(f"Zeroconf error: {e}")
-                    await asyncio.sleep(1)
+                    time.sleep(1)
 
             dp_port = info.port
             logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
@@ -114,6 +113,20 @@ class DigitalPerformer(Daw):
         #Connect to Digital Performer via OSC
         from app_settings import settings
         logger.info("Starting Digital Performer OSC server")
+        # Connect to the Digico console
+        logger.info("Starting Digico OSC server")
+        self.digitalperformer_client = tcp_client.TCPDispatchClient(
+            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode='1.0',
+        )
+        self._receive_digitalperformer_OSC()
+        while not self._shutdown_server_event.is_set():
+            try:
+                self._refresh_control_surfaces()
+                while not self._shutdown_server_event.is_set():
+                    self.digitalperformer_client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
+            except Exception:
+                time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+
 
 
 
