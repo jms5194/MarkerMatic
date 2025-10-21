@@ -13,6 +13,7 @@ from logger_config import logger
 
 from . import Daw
 
+
 class ZeroConfListener(ServiceListener):
     def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
         """Called when an existing service is updated."""
