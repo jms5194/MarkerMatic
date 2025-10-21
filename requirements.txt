@@ -11,6 +11,6 @@ psutil==7.0.0
 py-ptsl==600.0.0
 py4j==0.10.9.9
 Pypubsub==4.0.3
-python-osc==1.9.3
+python-osc @git+https://github.com/jms5194/python-osc
 python-rtmidi==1.5.8
 wxPython==4.2.3

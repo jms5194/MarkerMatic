@@ -119,9 +119,10 @@ class DigitalPerformer(Daw):
         from app_settings import settings
         sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
-        max_length = 36
-        # Set range to ignore the markers for sequence start and end, etc
+
+        # Set range to ignore the markers for sequence start and end, etc.
         for i in range(6, marker_qty+2):
+            max_length = 36
             test_name = args[i]
             # Remove the timestamp at the end of the name that DP returns
             test_name = test_name[:-9]
@@ -137,6 +138,7 @@ class DigitalPerformer(Daw):
             # DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
             if test_name == self.name_to_match[:max_length]:
                 self._goto_marker_by_id(sel_list_cookie, i-3)
+                break
 
         # Sel List must be deleted after use
         with self.digitalperformer_send_lock:
@@ -175,6 +177,7 @@ class DigitalPerformer(Daw):
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
+            # Use the API version response as a keep alive
             self.digitalperformer_client.send_message("/API_Version/Get", None)
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
@@ -212,9 +215,12 @@ class DigitalPerformer(Daw):
         if self.is_playing is False:
             self.name_to_match = name
             if settings.name_only_match:
-                self.name_to_match = self.name_to_match.split(" ")
-                self.name_to_match = self.name_to_match[1:]
-                self.name_to_match = " ".join(self.name_to_match)
+                try:
+                    self.name_to_match = self.name_to_match.split(" ")
+                    self.name_to_match = self.name_to_match[1:]
+                    self.name_to_match = " ".join(self.name_to_match)
+                except Exception as e:
+                    logger.error(f"Unable to format incoming cue string{e}")
             with self.digitalperformer_send_lock:
                 # Request the list of all markers currently in project
                 self.digitalperformer_client.send_message("/MarkersSelList/Get_NewSelList", None)
