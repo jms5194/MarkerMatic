@@ -1,3 +1,4 @@
+zeroconf
 appdirs==1.4.4
 asn1==3.1.0
 ConfigUpdater==3.2

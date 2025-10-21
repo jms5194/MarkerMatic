@@ -136,17 +136,20 @@ class DigitalPerformer(Daw):
 
     def _marker_matcher(self, osc_address, *args):
         from app_settings import settings
-        sel_list_cookie = args[0]
+        sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
 
         for i in range(6, marker_qty+2):
+            #Set range to ignore the markers for sequence start and end, etc
             test_name = args[i]
             test_name = test_name[:-9]
+            #Remove the timestamp at the end of the name that DP returns
             if settings.name_only_match:
                 test_name = test_name.split(" ")
                 test_name = test_name[1:]
                 test_name = " ".join(test_name)
             if test_name == self.name_to_match[:36]:
+                #DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
                 self._goto_marker_by_id(sel_list_cookie, i-3)
 
         #Sel List must be deleted after use
