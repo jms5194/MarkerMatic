@@ -138,15 +138,16 @@ class DigitalPerformer(Daw):
         from app_settings import settings
         sel_list_cookie = args[0]
         marker_qty = int(args[2])
-        for i in range(1, marker_qty):
+
+        for i in range(6, marker_qty+2):
             test_name = args[i]
-            test_name = test_name[:-8]
+            test_name = test_name[:-9]
             if settings.name_only_match:
                 test_name = test_name.split(" ")
                 test_name = test_name[1:]
                 test_name = " ".join(test_name)
-            if test_name == self.name_to_match[36:]:
-                self._goto_marker_by_id(sel_list_cookie, i)
+            if test_name == self.name_to_match[:36]:
+                self._goto_marker_by_id(sel_list_cookie, i-3)
 
         #Sel List must be deleted after use
         with self.digitalperformer_send_lock:
@@ -267,8 +268,7 @@ class DigitalPerformer(Daw):
             self._place_marker_with_name(cue)
         elif (
             settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-            and self.is_playing is False
-        ):
+            and self.is_playing is False):
             self.get_marker_id_by_name(cue)
 
     def _shutdown_servers(self):
