@@ -3,19 +3,15 @@ import time
 from typing import Any, Callable
 
 from pubsub import pub
-from pythonosc import tcp_client
+from pythonosc import tcp_client, osc_message_builder
 
 from zeroconf import ServiceListener, Zeroconf, ServiceInfo
-from zeroconf.asyncio import AsyncZeroconf, AsyncServiceInfo
-import socket
 
 import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw
-
-import asyncio
 
 class ZeroConfListener(ServiceListener):
     def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
@@ -32,10 +28,7 @@ class ZeroConfListener(ServiceListener):
         info = zc.get_service_info(type_, name)
         if info:  # Ensure service info is available
             print(f"Service {name} added, service info: {info}")
-            # You can add logic here to check for specific service properties
-            # For example, if you are looking for a service with a specific name or property
-            # if "my_unique_service_identifier" in info.properties:
-            #     print("Found my specific service!")
+
 
 class DigitalPerformer(Daw):
     type = "Digital Performer"
@@ -111,12 +104,11 @@ class DigitalPerformer(Daw):
 
     def _build_digitalperformer_osc_servers(self):
         #Connect to Digital Performer via OSC
-        from app_settings import settings
         logger.info("Starting Digital Performer OSC server")
         # Connect to the Digico console
         logger.info("Starting Digico OSC server")
         self.digitalperformer_client = tcp_client.TCPDispatchClient(
-            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(), mode='1.0',
+            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(),mode='1.0',
         )
         self._receive_digitalperformer_OSC()
         while not self._shutdown_server_event.is_set():
@@ -129,11 +121,11 @@ class DigitalPerformer(Daw):
 
 
 
-
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
         self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_client.dispatcher.map("/TransportState", self._current_transport_state)
+        self.digitalperformer_client.dispatcher.map("/Get_Time", self._place_marker_at_time)
         self.digitalperformer_client.dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
@@ -200,10 +192,17 @@ class DigitalPerformer(Daw):
 
     def _place_marker_at_time(self, osc_address, *args):
         if osc_address == "/Get_Time":
-            cur_pos = args[0]
-            print(cur_pos)
-            with self.digitalperformer_send_lock:
-                self.digitalperformer_client.send_message("/MakeMarker", 6, cur_pos, self.new_marker_name)
+            try:
+                cur_pos = args[0]
+                with self.digitalperformer_send_lock:
+                    msg = osc_message_builder.OscMessageBuilder(address="/MakeMarker")
+                    msg.add_arg(6)
+                    msg.add_arg(cur_pos, arg_type='d')
+                    msg.add_arg(self.new_marker_name)
+                    osc_message = msg.build()
+                    self.digitalperformer_client.send(osc_message)
+            except Exception as e:
+                logger.error(f"Unable to resolve current playhead time: {e}")
             logger.info(f"Placed marker for cue: {self.new_marker_name}")
 
     def get_marker_id_by_name(self, name: str):
