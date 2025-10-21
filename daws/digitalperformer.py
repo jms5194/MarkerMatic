@@ -105,8 +105,6 @@ class DigitalPerformer(Daw):
     def _build_digitalperformer_osc_servers(self):
         #Connect to Digital Performer via OSC
         logger.info("Starting Digital Performer OSC server")
-        # Connect to the Digico console
-        logger.info("Starting Digico OSC server")
         self.digitalperformer_client = tcp_client.TCPDispatchClient(
             constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(),mode='1.0',
         )
@@ -124,8 +122,9 @@ class DigitalPerformer(Daw):
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
         self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
-        self.digitalperformer_client.dispatcher.map("/TransportState", self._current_transport_state)
+        self.digitalperformer_client.dispatcher.map("/TransportState/Get", self._current_transport_state)
         self.digitalperformer_client.dispatcher.map("/Get_Time", self._place_marker_at_time)
+        self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_client.dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
@@ -135,25 +134,35 @@ class DigitalPerformer(Daw):
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
-    def _marker_matcher(self, osc_address, test_name):
-        self._message_received()
-        # Matches a marker composite name with its Reaper ID
+    def _marker_matcher(self, osc_address, *args):
         from app_settings import settings
+        sel_list_cookie = args[0]
+        marker_qty = int(args[2])
+        for i in range(1, marker_qty):
+            test_name = args[i]
+            test_name = test_name[:-8]
+            if settings.name_only_match:
+                test_name = test_name.split(" ")
+                test_name = test_name[1:]
+                test_name = " ".join(test_name)
+            if test_name == self.name_to_match[36:]:
+                self._goto_marker_by_id(sel_list_cookie, i)
 
-        address_split = osc_address.split("/")
-        marker_id = address_split[2]
-        if settings.name_only_match:
-            test_name = test_name.split(" ")
-            test_name = test_name[1:]
-            test_name = " ".join(test_name)
-        if test_name == self.name_to_match:
-            self._goto_marker_by_id(marker_id)
+        #Sel List must be deleted after use
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/SelList_Delete", sel_list_cookie)
+
+
+    def _update_current_transport_state(self):
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/TransportState/Get", None)
+
 
     def _current_transport_state(self, osc_address, val):
         # Watches what the Digital Performer playhead is doing.
         playing = None
         recording = None
-        if osc_address == "/TransportState":
+        if osc_address == "/TransportState/Get":
             if val == 0:
                 playing = False
                 recording = False
@@ -180,9 +189,9 @@ class DigitalPerformer(Daw):
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/API_Version/Get", None)
 
-    def _goto_marker_by_id(self, marker_id):
+    def _goto_marker_by_id(self, list_cookie, marker_id):
         with self.digitalperformer_send_lock:
-            self.reaper_client.send_message("/marker", int(marker_id))
+            self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
 
     def _place_marker_with_name(self, marker_name: str):
         with self.digitalperformer_send_lock:
@@ -249,6 +258,7 @@ class DigitalPerformer(Daw):
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
+        self._update_current_transport_state()
 
         if (
             settings.marker_mode is PlaybackState.RECORDING
