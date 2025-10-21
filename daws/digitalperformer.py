@@ -14,23 +14,6 @@ from logger_config import logger
 from . import Daw
 
 
-class ZeroConfListener(ServiceListener):
-    def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
-        """Called when an existing service is updated."""
-        print(f"Service {name} updated")
-
-    def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
-        """Called when a service is removed."""
-        print(f"Service {name} removed")
-
-    def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
-        """Called when a new service is discovered."""
-        print("SERVICE")
-        info = zc.get_service_info(type_, name)
-        if info:  # Ensure service info is available
-            print(f"Service {name} added, service info: {info}")
-
-
 class DigitalPerformer(Daw):
     type = "Digital Performer"
     _shutdown_server_event = threading.Event()
