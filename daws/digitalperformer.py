@@ -5,7 +5,7 @@ from typing import Any, Callable
 from pubsub import pub
 from pythonosc import tcp_client, osc_message_builder
 
-from zeroconf import ServiceListener, Zeroconf, ServiceInfo
+from zeroconf import Zeroconf, ServiceInfo
 
 import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
@@ -85,9 +85,8 @@ class DigitalPerformer(Daw):
             logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
             return dp_port
 
-
     def _build_digitalperformer_osc_servers(self):
-        #Connect to Digital Performer via OSC
+        # Connect to Digital Performer via OSC
         logger.info("Starting Digital Performer OSC server")
         self.digitalperformer_client = tcp_client.TCPDispatchClient(
             constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(),mode='1.0',
@@ -100,8 +99,6 @@ class DigitalPerformer(Daw):
                     self.digitalperformer_client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
-
-
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
@@ -122,29 +119,32 @@ class DigitalPerformer(Daw):
         from app_settings import settings
         sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
-
+        max_length = 36
+        # Set range to ignore the markers for sequence start and end, etc
         for i in range(6, marker_qty+2):
-            #Set range to ignore the markers for sequence start and end, etc
             test_name = args[i]
+            # Remove the timestamp at the end of the name that DP returns
             test_name = test_name[:-9]
-            #Remove the timestamp at the end of the name that DP returns
             if settings.name_only_match:
-                test_name = test_name.split(" ")
-                test_name = test_name[1:]
-                test_name = " ".join(test_name)
-            if test_name == self.name_to_match[:36]:
-                #DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
+                try:
+                    test_name = test_name.split(" ")
+                    # Remove string slices from max_length to deal with removed number
+                    max_length = max_length - len(test_name[0])
+                    test_name = test_name[1:]
+                    test_name = " ".join(test_name)
+                except Exception as e:
+                    logger.error(f"Unable to format string for name only match:{e}")
+            # DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
+            if test_name == self.name_to_match[:max_length]:
                 self._goto_marker_by_id(sel_list_cookie, i-3)
 
-        #Sel List must be deleted after use
+        # Sel List must be deleted after use
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/SelList_Delete", sel_list_cookie)
-
 
     def _update_current_transport_state(self):
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/TransportState/Get", None)
-
 
     def _current_transport_state(self, osc_address, val):
         # Watches what the Digital Performer playhead is doing.
@@ -179,6 +179,7 @@ class DigitalPerformer(Daw):
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
         with self.digitalperformer_send_lock:
+            # Selecting a marker in a SelList moves the playhead to that location
             self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
 
     def _place_marker_with_name(self, marker_name: str):
@@ -193,7 +194,9 @@ class DigitalPerformer(Daw):
                 cur_pos = args[0]
                 with self.digitalperformer_send_lock:
                     msg = osc_message_builder.OscMessageBuilder(address="/MakeMarker")
+                    # Arg1 value 6 indicates we want to work in samples
                     msg.add_arg(6)
+                    # Arg2 is the position, it must be sent as a double, not float
                     msg.add_arg(cur_pos, arg_type='d')
                     msg.add_arg(self.new_marker_name)
                     osc_message = msg.build()
@@ -213,6 +216,7 @@ class DigitalPerformer(Daw):
                 self.name_to_match = self.name_to_match[1:]
                 self.name_to_match = " ".join(self.name_to_match)
             with self.digitalperformer_send_lock:
+                # Request the list of all markers currently in project
                 self.digitalperformer_client.send_message("/MarkersSelList/Get_NewSelList", None)
 
     def _incoming_transport_action(self, transport_action: TransportAction):
