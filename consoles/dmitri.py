@@ -36,7 +36,7 @@ class Dmitri(Console):
         while not self._shutdown_server_event.is_set():
             try:
                 self.heartbeat()
-                #self._cue_list_subscribe()
+                self._cue_list_subscribe()
                 while not self._shutdown_server_event.is_set():
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
@@ -64,5 +64,5 @@ class Dmitri(Console):
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/subscribe", "Automation 1 Active Cue ID")
-            self._client.send_message("/subscribe", "Automation 1 Active Cue Name")
+            self._client.send_message("/subscribe", "Input 1 Mute")
+            #self._client.send_message("/subscribe", "Automation 1 Active Cue Name")
