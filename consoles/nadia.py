@@ -11,7 +11,7 @@ from . import Console
 
 
 class Nadia(Console):
-    fixed_send_port: int = 32000  # pyright: ignore[reportIncompatibleVariableOverride]
+    fixed_send_port: int = 28133  # pyright: ignore[reportIncompatibleVariableOverride]
     type = "Nadia"
     supported_features = []
     _client: udp_client.DispatchClient
@@ -28,14 +28,15 @@ class Nadia(Console):
             settings.console_ip, self.fixed_send_port
         )
 
-        self._client.dispatcher.map("/subscribeok", self._subscribe_ok_received)
+        self._client.dispatcher.map("/pong", self._subscribe_ok_received)
         self._client.dispatcher.map("/subscribefail", self._subscribe_fail_received)
-        self._client.dispatcher.map("/cuefired", self._cue_number_received)
+        self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
 
         while not self._shutdown_server_event.is_set():
             try:
                 self.heartbeat()
+                self._cue_list_subscribe()
                 while not self._shutdown_server_event.is_set():
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
@@ -47,13 +48,11 @@ class Nadia(Console):
     def _subscribe_fail_received(self, _address: str) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
-    def _cue_number_received(
-        self, _address: str, cue_number: str, cue_name: Optional[str] = None, *_
-    ) -> None:
-        if cue_name is not None:
-            # Cue names are only supported in TheatreMix 3.4 or above
-            cue_number = f"{cue_number} {cue_name}"
-        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
+    def _subscribed_data_received(self, _address, *args):
+        for i in args:
+            print(i)
+
+        #pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
         self._message_received()
 
     def _message_received(self, *_) -> None:
@@ -61,4 +60,9 @@ class Nadia(Console):
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/subscribe", [])
+            self._client.send_message("/ping", "MarkerMatic")
+
+    def _cue_list_subscribe(self) -> None:
+        if hasattr(self, "_client"):
+            self._client.send_message("/subscribe", "Input 1 Mute")
+            #self._client.send_message("/subscribe", "Automation 1 Active Cue Name")
