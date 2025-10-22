@@ -32,11 +32,11 @@ class Nadia(Console):
         self._client.dispatcher.map("/subscribefail", self._subscribe_fail_received)
         self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
+        self._cue_list_subscribe()
 
         while not self._shutdown_server_event.is_set():
             try:
                 self.heartbeat()
-                self._cue_list_subscribe()
                 while not self._shutdown_server_event.is_set():
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
@@ -52,7 +52,7 @@ class Nadia(Console):
         for i in args:
             print(i)
 
-        #pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
+        # pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
         self._message_received()
 
     def _message_received(self, *_) -> None:
@@ -60,9 +60,10 @@ class Nadia(Console):
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
+            # Send ping message to Nadia, it will respond with pong and MarkerMatic identifier
             self._client.send_message("/ping", "MarkerMatic")
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/subscribe", "Input 1 Mute")
-            #self._client.send_message("/subscribe", "Automation 1 Active Cue Name")
+            self._client.send_message("/subscribe", "CueListPlayer 1 Active Cue ID")
+            self._client.send_message("/subscribe", "CueListPlayer 1 Active Cue Name")
