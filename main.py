@@ -555,7 +555,19 @@ class PrefsPanel(wx.Panel):
             flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
             border=EXTERNAL_SPACING,
         )
-        panel_sizer.AddSpacer(INTERNAL_SPACING)
+
+        # Cue List Player
+        console_cue_list_player_label = wx.StaticText(
+            self, label="Cue List Player:", style=wx.ALIGN_RIGHT
+        )
+        console_main_section.Add(console_cue_list_player_label)
+        self.console_cue_list_player_control = wx.TextCtrl(self, style=wx.TE_CENTER)
+        self.console_cue_list_player_control.SetMaxLength(5)
+        self.console_cue_list_player_control.SetValue(str(settings.cue_list_player))
+        console_main_section.Add(
+            self.console_cue_list_player_control,
+            flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
+        )
 
         # Console Repeater Section
         panel_sizer.AddSpacer(INTERNAL_SPACING)
@@ -855,6 +867,9 @@ class PrefsPanel(wx.Panel):
         else:
             self.console_rcv_port_control.SetValue(str(console.fixed_receive_port))
             self.console_rcv_port_control.Disable()
+        self.console_cue_list_player_control.Enabled = (
+            Feature.CUE_LIST_PLAYER in console.supported_features
+        )
 
     def update_button_pressed(self, e):
         logger.info("Updating configuration settings.")
@@ -878,6 +893,9 @@ class PrefsPanel(wx.Panel):
             )
             settings.allow_loading_while_playing = (
                 self.allow_loading_while_playing_checkbox.GetValue()
+            )
+            settings.cue_list_player = int(
+                self.console_cue_list_player_control.GetValue()
             )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
             settings.external_control_osc_port = int(
@@ -908,6 +926,7 @@ class PrefsPanel(wx.Panel):
                 external_control_midi_port=settings.external_control_midi_port,
                 mmc_control_enabled=settings.mmc_control_enabled,
                 allow_loading_while_playing=settings.allow_loading_while_playing,
+                cue_list_player=settings.cue_list_player,
             )
             MainWindow.BridgeFunctions.shutdown_and_restart_servers()
             # Close the preferences window when update is pressed.

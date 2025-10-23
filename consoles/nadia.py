@@ -7,15 +7,14 @@ from pythonosc import udp_client
 import constants
 from constants import PyPubSubTopics
 
-from . import Console
+from . import Console, Feature
 
 
 class Nadia(Console):
     fixed_send_port: int = 28133  # pyright: ignore[reportIncompatibleVariableOverride]
     type = "Nadia"
-    supported_features = []
+    supported_features = [Feature.CUE_LIST_PLAYER]
     _client: udp_client.DispatchClient
-    selected_list = "1"
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -24,6 +23,8 @@ class Nadia(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
+
+        self.selected_list = settings.cue_list_player
 
         self._client = udp_client.DispatchClient(
             settings.console_ip, self.fixed_send_port
