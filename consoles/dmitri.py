@@ -65,7 +65,7 @@ class Dmitri(Console):
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
-            # Send ping message to Nadia, it will respond with pong and MarkerMatic identifier
+            # Send ping message to D'Mitri, it will respond with pong and MarkerMatic identifier
             self._client.send_message("/ping", "MarkerMatic")
 
     def _cue_list_subscribe(self) -> None:
