@@ -15,6 +15,7 @@ class Dmitri(Console):
     type = "D'Mitri"
     supported_features = []
     _client: udp_client.DispatchClient
+    selected_list = "1"
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -29,14 +30,13 @@ class Dmitri(Console):
         )
 
         self._client.dispatcher.map("/pong", self._subscribe_ok_received)
-        self._client.dispatcher.map("/subscribefail", self._subscribe_fail_received)
         self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
+        self._cue_list_subscribe()
 
         while not self._shutdown_server_event.is_set():
             try:
                 self.heartbeat()
-                self._cue_list_subscribe()
                 while not self._shutdown_server_event.is_set():
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
@@ -49,10 +49,14 @@ class Dmitri(Console):
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
     def _subscribed_data_received(self, _address, *args):
-        print("received")
-        print(_address + " " + args)
-
-        #pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
+        if (
+            args[1] == f"Automation {self.selected_list} Active Cue Name"
+            and args[3] == f"Automation {self.selected_list} Active Cue ID"
+        ):
+            cue_name = str(args[2])
+            cue_id = str(args[4])
+            new_cue = cue_id + " " + cue_name
+            pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
     def _message_received(self, *_) -> None:
@@ -60,9 +64,14 @@ class Dmitri(Console):
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
+            # Send ping message to Nadia, it will respond with pong and MarkerMatic identifier
             self._client.send_message("/ping", "MarkerMatic")
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/subscribe", "Input 1 Mute")
-            #self._client.send_message("/subscribe", "Automation 1 Active Cue Name")
+            self._client.send_message(
+                "/subscribe", f"Automation {self.selected_list} Active Cue ID"
+            )
+            self._client.send_message(
+                "/subscribe", f"Automation {self.selected_list} Active Cue Name"
+            )
