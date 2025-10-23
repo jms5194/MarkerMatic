@@ -15,6 +15,7 @@ class Nadia(Console):
     type = "Nadia"
     supported_features = []
     _client: udp_client.DispatchClient
+    selected_list = "1"
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -29,7 +30,6 @@ class Nadia(Console):
         )
 
         self._client.dispatcher.map("/pong", self._subscribe_ok_received)
-        self._client.dispatcher.map("/subscribefail", self._subscribe_fail_received)
         self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
         self._cue_list_subscribe()
@@ -49,10 +49,11 @@ class Nadia(Console):
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
     def _subscribed_data_received(self, _address, *args):
-        for i in args:
-            print(i)
-
-        # pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_number)
+        if args[1] == f"CueListPlayer {self.selected_list} Active Cue Name" and args[3] == f"CueListPlayer {self.selected_list} Active Cue ID":
+            cue_name = str(args[2])
+            cue_id = str(args[4])
+            new_cue = cue_id + " " + cue_name
+            pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
     def _message_received(self, *_) -> None:
@@ -65,5 +66,5 @@ class Nadia(Console):
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
-            self._client.send_message("/subscribe", "CueListPlayer 1 Active Cue ID")
-            self._client.send_message("/subscribe", "CueListPlayer 1 Active Cue Name")
+            self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
+            self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
