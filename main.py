@@ -15,7 +15,7 @@ from pubsub import pub
 import constants
 import ui
 import utilities
-from app_settings import settings
+from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import Daw
@@ -444,8 +444,8 @@ class PrefsWindow(wx.Frame):
         )
         PrefsPanel(self, console=console)
         self.Fit()
-        if self.GetSize().Width < 300:
-            self.SetSize(width=300, height=-1)
+        if self.GetSize().Width < 350:
+            self.SetSize(width=350, height=-1)
         self.SetIcons(icons)
         self.Show()
 
@@ -514,8 +514,7 @@ class PrefsPanel(wx.Panel):
         console_main_section.Add(
             self.console_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
-        # label_min_width is used to force FlexSizers with only a checkbox (so no label) to look right
-        label_min_width = console_ip_label.GetBestSize().width
+
         # Console Ports
         console_main_section.AddStretchSpacer()
         console_main_ports_label_section = wx.GridSizer(1, 2, 0, INTERNAL_SPACING)
@@ -562,12 +561,15 @@ class PrefsPanel(wx.Panel):
         )
         console_main_section.Add(console_cue_list_player_label)
         self.console_cue_list_player_control = wx.TextCtrl(self, style=wx.TE_CENTER)
-        self.console_cue_list_player_control.SetMaxLength(5)
+        self.console_cue_list_player_control.SetMaxLength(3)
         self.console_cue_list_player_control.SetValue(str(settings.cue_list_player))
         console_main_section.Add(
             self.console_cue_list_player_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
         )
+
+        # label_min_width is used to force FlexSizers with only a checkbox (so no label) to look right
+        label_min_width = console_cue_list_player_label.GetBestSize().width
 
         # Console Repeater Section
         panel_sizer.AddSpacer(INTERNAL_SPACING)
@@ -807,6 +809,9 @@ class PrefsPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.update_button_pressed, update_button)
         self.console_ip_control.Bind(wx.EVT_TEXT, self.changed_console_ip)
         self.console_ip_control.Bind(wx.EVT_KILL_FOCUS, self.check_console_ip)
+        self.console_cue_list_player_control.Bind(
+            wx.EVT_KILL_FOCUS, self.check_cue_list_player
+        )
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
         self.repeater_radio_enabled.Bind(
             wx.EVT_CHECKBOX,
@@ -961,6 +966,21 @@ class PrefsPanel(wx.Panel):
                 dlg.Destroy()  # Destroy pop-up when finished.
                 # Put the focus back on the bad field
                 wx.CallAfter(self.console_ip_control.SetFocus)
+
+    def check_cue_list_player(self, _: wx.CommandEvent) -> None:
+        """Validates the Cue List Player index, and displays an alert dialog if it wasn't valid"""
+        cue_list_player_num = int(self.console_cue_list_player_control.GetValue())
+        if not validate_cue_list_player(cue_list_player_num):
+            logger.warning(f"Invalid Cue List Player index: {cue_list_player_num}")
+            dlg = wx.MessageDialog(
+                self,
+                "This is not a valid Cue List Player index. Please try again",
+                constants.APPLICATION_NAME,
+                wx.OK,
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
+            wx.CallAfter(self.console_cue_list_player_control.SetFocus)
 
     def update_midi_ports(self, ports: list[str]) -> None:
         def update(self: PrefsPanel, ports: list[str]) -> None:

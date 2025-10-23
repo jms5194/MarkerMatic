@@ -31,7 +31,7 @@ class ThreadSafeSettings:
             "external_control_osc_port": 49103,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
             "allow_loading_while_playing": False,
-            "cue_list_player": 0,
+            "cue_list_player": 1,
         }
 
     @property
@@ -254,9 +254,8 @@ class ThreadSafeSettings:
     def cue_list_player(self, value: int):
         with self._lock:
             cue_list_player_num = int(value)
-            # TODO: Add validation for ControlPointAddress
-            # if not validate_port_num(cue_list_player_num):
-            #     raise ValueError("Invalid ControlPointAddress for CueListPlayer")
+            if not validate_cue_list_player(cue_list_player_num):
+                raise ValueError("Invalid ControlPointAddress for CueListPlayer")
             self._settings["cue_list_player"] = cue_list_player_num
 
     def update_from_config_file(self, path: str) -> None:
@@ -327,3 +326,8 @@ settings = ThreadSafeSettings()
 
 def validate_port_num(port_num: int) -> bool:
     return 1 <= port_num <= 65535
+
+
+def validate_cue_list_player(cue_list_player_num: int) -> bool:
+    """Validate that a Cue List Player's index is a valid human-readable/display value, between 1 and 127, inclusive"""
+    return 1 <= cue_list_player_num <= 127
