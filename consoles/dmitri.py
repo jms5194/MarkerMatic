@@ -151,7 +151,6 @@ class Dmitri(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
-        print("here again")
         self.selected_list = settings.cue_list_player
 
         self._client = udp_client.DispatchClient(
@@ -201,7 +200,6 @@ class Dmitri(Console):
         self._message_received()
 
     def _message_received(self, *_) -> None:
-        print("message received")
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:
