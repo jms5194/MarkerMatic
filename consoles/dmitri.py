@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, Tuple, List, Iterator
 from logger_config import logger
 
 from pubsub import pub
+import pythonosc
 from pythonosc import udp_client
 from pythonosc.osc_message import OscMessage, osc_types, ParseError
 
@@ -130,7 +131,9 @@ class CustomOscMessage(OscMessage):
         """Returns an iterator over the parameters of this message."""
         return iter(self._parameters)
 
-OscMessage = CustomOscMessage
+
+# Monkey patch our custom class:
+pythonosc.osc_message.OscMessage = CustomOscMessage
 
 
 class Dmitri(Console):
