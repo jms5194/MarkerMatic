@@ -95,7 +95,7 @@ def add_OSC_interface(resource_path, rcv_port=8000, snd_port=9000):
         logger.info("No control surfaces found, creating csurf count")
         config["reaper"]["csurf_cnt"] = "1"
         csurf_count = 1
-    key = "csurf_{}".format(csurf_count - 1)
+    key = f"csurf_{csurf_count - 1}"
     config["reaper"][key] = (
         f'OSC "MarkerMatic Link" 3 {snd_port} "{constants.IP_LOOPBACK}" {rcv_port} 1024 10 ""'
     )
@@ -125,7 +125,7 @@ def osc_interface_exists(resource_path, rcv_port, snd_port):
     if config.has_option("reaper", "csurf_cnt"):
         csurf_count = int(config["reaper"].get("csurf_cnt", "0"))
         for i in range(csurf_count):
-            string = config["reaper"]["csurf_{}".format(i)]
+            string = config["reaper"][f"csurf_{i}"]
             if string.startswith("OSC"):  # It's an OSC interface
                 if string.split(" ")[4] == str(snd_port) and string.split(" ")[
                     6

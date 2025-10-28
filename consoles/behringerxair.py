@@ -52,9 +52,7 @@ class BehringerXAir(Console):
     def _snapshot_number_received(self, _address: str, snapshot_number: str) -> None:
         pub.sendMessage(
             PyPubSubTopics.HANDLE_CUE_LOAD,
-            cue="{cue_number} {cue_name}".format(
-                cue_number=snapshot_number, cue_name=self._snapshot_name
-            ),
+            cue=f"{snapshot_number} {self._snapshot_name}",
         )
         self._message_received()
 

@@ -80,7 +80,7 @@ class Yamaha(Console):
                             f"{self.type} internal scene {scene_internal_id} recalled"
                         )
                         request_scene_info_command = (
-                            "ssinfo_ex MIXER:Lib/Scene {}\n".format(scene_internal_id)
+                            f"ssinfo_ex MIXER:Lib/Scene {scene_internal_id}\n"
                         )
                         self._client_socket.sendall(
                             str.encode(request_scene_info_command)
