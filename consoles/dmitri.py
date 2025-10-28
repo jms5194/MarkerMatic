@@ -157,7 +157,7 @@ class Dmitri(Console):
             settings.console_ip, self.fixed_send_port
         )
 
-        self._client.dispatcher.map("/pong", self._subscribe_ok_received)
+        self._client.dispatcher.map("/pong", self._pong_received)
         self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
 
@@ -170,7 +170,7 @@ class Dmitri(Console):
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
         self._sent_subscribe = False
 
-    def _subscribe_ok_received(self, _address: str, _expires_seconds: int) -> None:
+    def _pong_received(self, _address: str, _expires_seconds: int) -> None:
         if not self._sent_subscribe:
             self._cue_list_subscribe()
             self._sent_subscribe = True
@@ -178,13 +178,16 @@ class Dmitri(Console):
             self._message_received()
 
     def _subscribed_data_received(self, _address, *args):
+        _cur_cue_id_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
+        _cue_cue_name_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
         if (
-            args[1] == f"Automation {self.selected_list} Active Cue Name"
-            and args[3] == f"Automation {self.selected_list} Active Cue ID"
+            args[1] == _cur_cue_id_cpa
+            and args[3] == _cue_cue_name_cpa
         ):
             cue_name = str(args[2])
             cue_id = str(args[4])
             new_cue = cue_id + " " + cue_name
+            print(new_cue)
             pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
