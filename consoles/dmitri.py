@@ -79,6 +79,7 @@ class CustomOscMessage(OscMessage):
                 elif param == "N":  # Nil.
                     val = None
                 elif param == "A":
+                    # New tag type for Control Point Addresses
                     val, index = self._get_control_point_address(self._dgram, index)
                 elif param == "[":  # Array start.
                     array = []  # type: List[Any]
@@ -90,7 +91,6 @@ class CustomOscMessage(OscMessage):
                             f"Unexpected closing bracket in type tag: {type_tag}"
                         )
                     param_stack.pop()
-                # TODO: Support more exotic types as described in the specification.
                 else:
                     logger.warning(f"Unhandled parameter type: {param}")
                     continue
@@ -146,6 +146,7 @@ class Dmitri(Console):
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
     ) -> None:
+        logger.info("Starting D'Mitri Connection thread")
         start_managed_thread("console_connection_thread", self._console_client_thread)
 
     def _console_client_thread(self) -> None:
@@ -168,7 +169,8 @@ class Dmitri(Console):
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
-        self._sent_subscribe = False
+        else:
+            self._sent_subscribe = False
 
     def _pong_received(self, _address: str, _expires_seconds: int) -> None:
         if not self._sent_subscribe:
@@ -178,20 +180,28 @@ class Dmitri(Console):
             self._message_received()
 
     def _subscribed_data_received(self, _address, *args):
-        _cur_cue_id_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
-        _cue_cue_name_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
+        """
+        Defining the control point addresses with indices values from Meyer's cp_indices.py
+        -32751 = ciAutomation
+        -32701 = ciActive
+        -32666 = ciCue
+        -32730 = ciName
+        -32697 = ciID
+        """
+        _cur_cue_name_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
+        _cue_cue_id_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
         if (
-            args[1] == _cur_cue_id_cpa
-            and args[3] == _cue_cue_name_cpa
+            args[1] == _cur_cue_name_cpa
+            and args[3] == _cue_cue_id_cpa
         ):
             cue_name = str(args[2])
             cue_id = str(args[4])
             new_cue = cue_id + " " + cue_name
-            print(new_cue)
             pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
     def _message_received(self, *_) -> None:
+        print("message received")
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:
