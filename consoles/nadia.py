@@ -15,6 +15,7 @@ class Nadia(Console):
     type = "Nadia"
     supported_features = [Feature.CUE_LIST_PLAYER]
     _client: udp_client.DispatchClient
+    _sent_subscribe = False
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -30,7 +31,7 @@ class Nadia(Console):
             settings.console_ip, self.fixed_send_port
         )
 
-        self._client.dispatcher.map("/pong", self._subscribe_ok_received)
+        self._client.dispatcher.map("/pong", self._pong_received)
         self._client.dispatcher.map("/got", self._subscribed_data_received)
         self._client.dispatcher.set_default_handler(self._message_received)
         self._cue_list_subscribe()
@@ -42,12 +43,14 @@ class Nadia(Console):
                     self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+        self._sent_subscribe = False
 
-    def _subscribe_ok_received(self, _address: str, _expires_seconds: int) -> None:
-        self._message_received()
-
-    def _subscribe_fail_received(self, _address: str) -> None:
-        pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
+    def _pong_received(self, _address: str, _expires_seconds: int) -> None:
+        if not self._sent_subscribe:
+            self._cue_list_subscribe()
+            self._sent_subscribe = True
+        else:
+            self._message_received()
 
     def _subscribed_data_received(self, _address, *args):
         if args[1] == f"CueListPlayer {self.selected_list} Active Cue Name" and args[3] == f"CueListPlayer {self.selected_list} Active Cue ID":
@@ -67,5 +70,6 @@ class Nadia(Console):
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
+            self._client.send_message("/unsubscribeall", None)
             self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
             self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
