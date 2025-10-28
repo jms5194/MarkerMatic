@@ -178,8 +178,8 @@ class Dmitri(Console):
             self._message_received()
 
     def _subscribed_data_received(self, _address, *args):
-        _cur_cue_id_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
-        _cue_cue_name_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
+        _cur_cue_id_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
+        _cue_cue_name_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
         if (
             args[1] == _cur_cue_id_cpa
             and args[3] == _cue_cue_name_cpa
