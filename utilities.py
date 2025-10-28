@@ -163,18 +163,18 @@ class DawConsoleBridge:
         thread.start()
 
     def start_threads(self):
-        # Start all OSC server threads
+        # Start all OSC server threads, reinstantiating DAW and Console connections
         logger.info("Starting threads")
         if settings.daw_type in DAWS:
             daw_type = DAWS[settings.daw_type]
-            if not isinstance(self.daw, daw_type):
-                self.daw = daw_type()
+            self.daw = daw_type()
             self.daw.start_managed_threads(self.start_managed_thread)
+        else:
+            logger.error("DAW is not supported!")
         self.start_managed_thread("heartbeat_thread", self.heartbeat_loop)
         if settings.console_type in CONSOLES:
             console_type = CONSOLES[settings.console_type]
-            if not isinstance(self.console, console_type):
-                self.console = console_type()
+            self.console = console_type()
             self.console.start_managed_threads(self.start_managed_thread)
         else:
             logger.error("Console is not supported!")
