@@ -214,6 +214,8 @@ class Dmitri(Console):
             self._client.send_message(
                 "/subscribe", f"Automation {self.selected_list} Active Cue ID"
             )
+            self._client.send_message("/log", "MarkerMatic is connected.")
+            self._client.send_message("/log", f"MarkerMatic is subscribing to information about Cue List Player {self.selected_list}")
             self._client.send_message(
                 "/subscribe", f"Automation {self.selected_list} Active Cue Name"
             )
