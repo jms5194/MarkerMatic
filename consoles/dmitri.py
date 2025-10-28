@@ -151,7 +151,7 @@ class Dmitri(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
-
+        print("here again")
         self.selected_list = settings.cue_list_player
 
         self._client = udp_client.DispatchClient(
@@ -211,6 +211,7 @@ class Dmitri(Console):
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
+            logger.info("Subscribing to Meyer control points")
             self._client.send_message("/unsubscribeall", None)
             self._client.send_message(
                 "/subscribe", f"Automation {self.selected_list} Active Cue ID"

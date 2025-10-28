@@ -1,6 +1,6 @@
 import time
 from typing import Any, Callable, Optional
-
+from logger_config import logger
 from pubsub import pub
 from pythonosc import udp_client
 
@@ -20,6 +20,7 @@ class Nadia(Console):
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
     ) -> None:
+        logger.info("Starting Nadia Connection thread")
         start_managed_thread("console_connection_thread", self._console_client_thread)
 
     def _console_client_thread(self) -> None:
@@ -70,6 +71,7 @@ class Nadia(Console):
 
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
+            logger.info("Subscribing to Meyer control points")
             self._client.send_message("/unsubscribeall", None)
             self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
             self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
