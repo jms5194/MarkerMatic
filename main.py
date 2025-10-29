@@ -11,16 +11,17 @@ import wx.lib.buttons
 import wx.svg
 import wx.svg._nanosvg
 from pubsub import pub
+from showinfm import show_in_file_manager
 
 import constants
 import ui
 import utilities
-from app_settings import settings
+from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import Daw
-from external_control import get_midi_ports
-from logger_config import logger
+import external_control
+from logger_config import logger, get_log_file
 from utilities import DawConsoleBridge
 
 HALF_INTERNAL_SPACING = 5
@@ -70,6 +71,7 @@ class MainWindow(wx.Frame):
             about_menuitem = help_menu.Prepend(wx.ID_ABOUT)
             help_menu.AppendSeparator()
         documentation_menuitem = help_menu.Append(wx.ID_ANY, "&Documentation")
+        show_log_menuitem = help_menu.Append(wx.ID_ANY, "&Show Log")
         help_menu.AppendSeparator()
         license_menuitem = help_menu.Append(wx.ID_ANY, "&License && Thanks")
         menu_bar.Append(help_menu, "&Help")
@@ -81,6 +83,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_documentation, documentation_menuitem)
         self.Bind(wx.EVT_MENU, self.on_license, license_menuitem)
         self.Bind(wx.EVT_MENU, self.on_preferences, preferences_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_show_log, show_log_menuitem)
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
         pub.subscribe(
@@ -124,6 +127,10 @@ class MainWindow(wx.Frame):
                 console=self.BridgeFunctions.console,
                 icons=self.get_app_icons(),
             )
+
+    def on_show_log(self, _) -> None:
+        """Shows the current log file in the user's file manager"""
+        show_in_file_manager(get_log_file())
 
     def on_close(self, event: wx.CloseEvent | wx.CommandEvent):
         """Handle application shutdown requests from the UI,
@@ -302,22 +309,16 @@ class MainPanel(wx.Window):
             self.update_daw_connection_status, PyPubSubTopics.DAW_CONNECTION_STATUS
         )
         pub.subscribe(self.call_for_daw_reset, PyPubSubTopics.REQUEST_DAW_RESTART)
-        pub.subscribe(self.update_mode_select, PyPubSubTopics.CHANGE_PLAYBACK_STATE)
+        pub.subscribe(self.update_playback_state, PyPubSubTopics.CHANGE_PLAYBACK_STATE)
         MainWindow.BridgeFunctions.start_threads()
         # Start a timer for console timeout
         self.timer_lock = threading.Lock()
         self.configure_timers()
 
     def _mode_button_pressed(self, event: wx.CommandEvent) -> None:
-        for button in self._mode_buttons:
-            if button is event.GetEventObject() and event.IsChecked():
-                button.Disable()
-                if button.playback_state in PlaybackState:
-                    logger.info(f"marker_mode set to {button.playback_state}")
-                    settings.marker_mode = button.playback_state
-            else:
-                button.Enable()
-                button.SetValue(False)
+        button = event.GetEventObject()
+        if isinstance(button, ui.NoBorderBitmapToggle):
+            self.update_playback_state(button.playback_state)
 
     @staticmethod
     def place_marker(e):
@@ -326,13 +327,25 @@ class MainPanel(wx.Window):
             PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name="Marker from UI"
         )
 
-    def update_mode_select(self, selected_mode: PlaybackState):
-        if selected_mode is PlaybackState.RECORDING:
-            wx.CallAfter(self.mode_record_button.SetValue, True)
-        elif selected_mode is PlaybackState.PLAYBACK_TRACK:
-            wx.CallAfter(self.mode_playbacktracking_button.SetValue, True)
-        elif selected_mode is PlaybackState.PLAYBACK_NO_TRACK:
-            wx.CallAfter(self.mode_playbacknotrack_button.SetValue, True)
+    def update_playback_state(self, selected_mode: PlaybackState):
+        """Updates the application's playback state, and triggers a GUI
+        update"""
+        logger.info(f"{selected_mode} playback state selected")
+        settings.marker_mode = selected_mode
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            self._update_mode_select(selected_mode)
+        else:
+            wx.CallAfter(self._update_mode_select, selected_mode)
+
+    def _update_mode_select(self, selected_mode: PlaybackState) -> None:
+        """Handles updating the GUI's mode buttons"""
+        for button in self._mode_buttons:
+            if button.playback_state is selected_mode:
+                button.SetValue(True)
+                button.Disable()
+            else:
+                button.SetValue(False)
+                button.Enable()
 
     def configure_timers(self):
         # Builds a 5-second non-blocking timer for console response timeout.
@@ -438,8 +451,8 @@ class PrefsWindow(wx.Frame):
         )
         PrefsPanel(self, console=console)
         self.Fit()
-        if self.GetSize().Width < 300:
-            self.SetSize(width=300, height=-1)
+        if self.GetSize().Width < 350:
+            self.SetSize(width=350, height=-1)
         self.SetIcons(icons)
         self.Show()
 
@@ -503,13 +516,12 @@ class PrefsPanel(wx.Panel):
         )
         console_main_section.Add(console_ip_label)
         self.console_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
-        self.console_ip_control.SetMaxLength(15)
+        self.console_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.console_ip_control.SetValue(settings.console_ip)
         console_main_section.Add(
             self.console_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
-        # label_min_width is used to force FlexSizers with only a checkbox (so no label) to look right
-        label_min_width = console_ip_label.GetBestSize().width
+
         # Console Ports
         console_main_section.AddStretchSpacer()
         console_main_ports_label_section = wx.GridSizer(1, 2, 0, INTERNAL_SPACING)
@@ -549,7 +561,22 @@ class PrefsPanel(wx.Panel):
             flag=wx.EXPAND | wx.LEFT | wx.RIGHT,
             border=EXTERNAL_SPACING,
         )
-        panel_sizer.AddSpacer(INTERNAL_SPACING)
+
+        # Cue List Player
+        console_cue_list_player_label = wx.StaticText(
+            self, label="Cue List Player:", style=wx.ALIGN_RIGHT
+        )
+        console_main_section.Add(console_cue_list_player_label)
+        self.console_cue_list_player_control = wx.TextCtrl(self, style=wx.TE_CENTER)
+        self.console_cue_list_player_control.SetMaxLength(3)
+        self.console_cue_list_player_control.SetValue(str(settings.cue_list_player))
+        console_main_section.Add(
+            self.console_cue_list_player_control,
+            flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
+        )
+
+        # label_min_width is used to force FlexSizers with only a checkbox (so no label) to look right
+        label_min_width = console_cue_list_player_label.GetBestSize().width
 
         # Console Repeater Section
         panel_sizer.AddSpacer(INTERNAL_SPACING)
@@ -574,7 +601,7 @@ class PrefsPanel(wx.Panel):
             wx.StaticText(self, label="Tablet IP:", style=wx.ALIGN_RIGHT)
         )
         self.repeater_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
-        self.repeater_ip_control.SetMaxLength(15)
+        self.repeater_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.repeater_ip_control.SetValue(settings.repeater_ip)
         console_repeater_section.Add(
             self.repeater_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
@@ -672,6 +699,17 @@ class PrefsPanel(wx.Panel):
         app_settings_section = wx.FlexGridSizer(2, INTERNAL_SPACING, INTERNAL_SPACING)
         app_settings_section.AddGrowableCol(1)
         app_settings_section.SetFlexibleDirection(direction=wx.VERTICAL)
+        # Allow loading while playing
+        app_settings_section.AddStretchSpacer()
+        self.allow_loading_while_playing_checkbox = wx.CheckBox(
+            self, label="Allow loading while playing"
+        )
+        self.allow_loading_while_playing_checkbox.SetValue(
+            settings.allow_loading_while_playing
+        )
+        app_settings_section.Add(
+            self.allow_loading_while_playing_checkbox, flag=wx.EXPAND
+        )
         # Always On Top
         app_settings_section.Add(width=label_min_width, height=0)
         self.always_on_top_checkbox = wx.CheckBox(self, label="Always display on top")
@@ -732,15 +770,11 @@ class PrefsPanel(wx.Panel):
         external_control_section.Add(
             wx.StaticText(self, label="MIDI port:", style=wx.ALIGN_RIGHT)
         )
-        available_ports = [constants.MIDI_PORT_NONE]
-        available_ports.extend(get_midi_ports())
-        self.external_control_midi_port_control = wx.Choice(
-            self, choices=available_ports, style=wx.TE_CENTER
-        )
-        if settings.external_control_midi_port in available_ports:
-            self.external_control_midi_port_control.SetSelection(
-                available_ports.index(settings.external_control_midi_port)
-            )
+        self.external_control_midi_port_control = wx.Choice(self, style=wx.TE_CENTER)
+        # Set the Choice's options based off the cached values
+        self.update_midi_ports(external_control.get_midi_ports())
+        # Trigger a refresh with the callback, which will update the Choice
+        external_control.refresh_midi_ports(self.update_midi_ports)
         external_control_section.Add(
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -782,6 +816,9 @@ class PrefsPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.update_button_pressed, update_button)
         self.console_ip_control.Bind(wx.EVT_TEXT, self.changed_console_ip)
         self.console_ip_control.Bind(wx.EVT_KILL_FOCUS, self.check_console_ip)
+        self.console_cue_list_player_control.Bind(
+            wx.EVT_KILL_FOCUS, self.check_cue_list_player
+        )
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
         self.repeater_radio_enabled.Bind(
             wx.EVT_CHECKBOX,
@@ -842,6 +879,9 @@ class PrefsPanel(wx.Panel):
         else:
             self.console_rcv_port_control.SetValue(str(console.fixed_receive_port))
             self.console_rcv_port_control.Disable()
+        self.console_cue_list_player_control.Enabled = (
+            Feature.CUE_LIST_PLAYER in console.supported_features
+        )
 
     def update_button_pressed(self, e):
         logger.info("Updating configuration settings.")
@@ -862,6 +902,12 @@ class PrefsPanel(wx.Panel):
             )
             settings.daw_type = self.daw_type_choice.GetString(
                 self.daw_type_choice.GetSelection()
+            )
+            settings.allow_loading_while_playing = (
+                self.allow_loading_while_playing_checkbox.GetValue()
+            )
+            settings.cue_list_player = int(
+                self.console_cue_list_player_control.GetValue()
             )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
             settings.external_control_osc_port = int(
@@ -891,6 +937,8 @@ class PrefsPanel(wx.Panel):
                 external_control_osc_port=settings.external_control_osc_port,
                 external_control_midi_port=settings.external_control_midi_port,
                 mmc_control_enabled=settings.mmc_control_enabled,
+                allow_loading_while_playing=settings.allow_loading_while_playing,
+                cue_list_player=settings.cue_list_player,
             )
             MainWindow.BridgeFunctions.shutdown_and_restart_servers()
             # Close the preferences window when update is pressed.
@@ -926,15 +974,44 @@ class PrefsPanel(wx.Panel):
                 # Put the focus back on the bad field
                 wx.CallAfter(self.console_ip_control.SetFocus)
 
+    def check_cue_list_player(self, _: wx.CommandEvent) -> None:
+        """Validates the Cue List Player index, and displays an alert dialog if it wasn't valid"""
+        cue_list_player_num = int(self.console_cue_list_player_control.GetValue())
+        if not validate_cue_list_player(cue_list_player_num):
+            logger.warning(f"Invalid Cue List Player index: {cue_list_player_num}")
+            dlg = wx.MessageDialog(
+                self,
+                "This is not a valid Cue List Player index. Please try again",
+                constants.APPLICATION_NAME,
+                wx.OK,
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
+            wx.CallAfter(self.console_cue_list_player_control.SetFocus)
+
+    def update_midi_ports(self, ports: list[str]) -> None:
+        def update(self: PrefsPanel, ports: list[str]) -> None:
+            self.external_control_midi_port_control.Set(ports)
+            if settings.external_control_midi_port in ports:
+                self.external_control_midi_port_control.SetSelection(
+                    ports.index(settings.external_control_midi_port)
+                )
+
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            update(self, ports)
+        else:
+            wx.CallAfter(update, self, ports)
+
 
 if __name__ == "__main__":
     try:
-        logger.info(f"Starting {constants.APPLICATION_NAME} Application")
+        logger.info("Starting wxPython GUI")
         app = wx.App(False)
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
         app.SetTopWindow(frame)
+        external_control.refresh_midi_ports()
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)

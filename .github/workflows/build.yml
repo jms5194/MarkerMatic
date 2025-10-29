@@ -43,15 +43,13 @@ jobs:
         os: [macos-x86, macos-arm64]
         include:
           - os: macos-x86
-            python-version: "3.12"
-            target: macos-x86
-            runs-on: macos-13
+            setup-python-arch: x64
+            arch: x86_64
           - os: macos-arm64
-            python-version: "3.12"
-            target: macos-arm64
-            runs-on: macos-latest
-    # Run the build on all of the matrix of systems above
-    runs-on: ${{ matrix.runs-on }}
+            setup-python-arch: arm64
+            arch: arm64
+    # macos-latest is ARM for macOS >= 14
+    runs-on: macos-latest
 
     steps:
       # Checkout the project from Github
@@ -60,13 +58,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.setup-python-arch }}
       # Upgrade Pip and install dependencies
       - name: Install dependencies
         run: |
           python - pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          python -m pip install -r requirements-dev.txt
+          arch -${{ matrix.arch }} python -m pip install -r requirements.txt
+          arch -${{ matrix.arch }} python -m pip install -r requirements-dev.txt
       # Bring in our apple certificate to the keychain of the runner
       - name: Import Apple Certificate
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
@@ -98,18 +96,11 @@ jobs:
         run: |
           security find-identity -v -p codesigning
 
-      # write a .env file with the secrets
-      - name: Write .env file Mac & Linux
-        if: matrix.os != 'windows-latest'
-        run: |
-          echo "LOCAL_RELEASE_TAG=${GITHUB_REF_NAME}" >> .env
-          echo "LOCAL_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> .env
-
       # Build app with Pyinstaller on Mac
       - name: Build with Py2App (MacOS)
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
-          python setup.py py2app
+          arch -${{ matrix.arch }} python setup.py py2app --arch ${{ matrix.arch }}
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
 
@@ -163,7 +154,7 @@ jobs:
             --window-pos 200 120 \
             --window-size 800 400 \
             --hide-extension "MarkerMatic.app" \
-            "MarkerMatic Installer"-${{ matrix.target }}.dmg \
+            "MarkerMatic Installer"-${{ matrix.os }}.dmg \
             "dist/MarkerMatic.app"
           do
             if [ $i -eq $max_tries ]

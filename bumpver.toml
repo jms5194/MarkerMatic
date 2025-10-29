@@ -1,0 +1,23 @@
+[bumpver]
+current_version = "v4.1.1+1004"
+version_pattern = "vMAJOR.MINOR.PATCH+BUILD"
+commit_message = "Bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "branch"
+commit = true
+tag = true
+push = true
+
+[bumpver.file_patterns]
+"constants.py" = [
+    'APPLICATION_COPYRIGHT = "© YYYY',
+    'VERSION = "MAJOR.MINOR.PATCH (Build BUILD)"',
+    'VERSION_EXTRA = "MAJOR.MINOR.PATCH.BUILD"',
+
+]
+"packaging/innosetup.iss" = [
+    '#define MyAppVersion "MAJOR.MINOR.PATCH (Build BUILD)"',
+    "AppCopyright=© YYYY",
+    "VersionInfoProductVersion=MAJOR.MINOR.PATCH.BUILD",
+]
+"bumpver.toml" = ['current_version = "{version}"']

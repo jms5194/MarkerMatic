@@ -11,13 +11,14 @@ class Feature(Enum):
     CUE_NUMBER = 1
     REPEATER = 2
     SEPERATE_RECEIVE_PORT = 3
+    CUE_LIST_PLAYER = 4
 
 
 class Console:
     fixed_receive_port: Optional[int] = None
     fixed_send_port: Optional[int] = None
     _shutdown_server_event: threading.Event
-    supported_features: List[Feature]
+    supported_features: List[Feature] = []
     type = "Unknown"
 
     def __init__(self) -> None:

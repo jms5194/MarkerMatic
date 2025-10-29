@@ -18,6 +18,7 @@ class Ardour(Daw):
     _shutdown_server_event = threading.Event()
     _ardour_responded_event = threading.Event()
     _ardour_heartbeat_event = threading.Event()
+    _resume_after_load = False
 
     def __init__(self):
         super().__init__()
@@ -173,8 +174,14 @@ class Ardour(Daw):
             self.is_playing = True
             logger.info("Ardour is playing")
         elif playing is False:
+            was_previously_playing = self.is_playing
             self.is_playing = False
             logger.info("Ardour is not playing")
+            if self._resume_after_load and was_previously_playing:
+                self._resume_after_load = False
+                time.sleep(0.1)
+                logger.info("Resuming playback after marker load")
+                self._ardour_play()
         if recording is True:
             self.is_recording = True
             logger.info("Ardour is recording")
@@ -257,7 +264,10 @@ class Ardour(Daw):
         elif (
             settings.marker_mode is PlaybackState.PLAYBACK_TRACK
             and self.is_playing is False
+            or settings.allow_loading_while_playing
         ):
+            if self.is_playing and settings.allow_loading_while_playing:
+                self._resume_after_load = True
             self._goto_marker_by_name(cue)
             # TODO: Add name only logic here
 

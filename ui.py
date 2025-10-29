@@ -87,7 +87,23 @@ if not (constants.WXPYTHON_USE_NATIVE_BUTTONS or os.getenv("UGLY_MODE")):
             self.GetEventHandler().ProcessEvent(evt)
 
     class NoBorderBitmapToggle(wx.lib.buttons.__ToggleMixin, NoBorderBitmapButton):
-        pass
+        playback_state: constants.PlaybackState
+
+        def __init__(
+            self,
+            parent,
+            playback_state: constants.PlaybackState,
+            icon: str = str(),
+            id=wx.ID_ANY,
+            pos=wx.DefaultPosition,
+            size=wx.Size(52, 52),
+            style=0,
+            validator=wx.DefaultValidator,
+            name="noborderbitmaptoggle",
+        ):
+            super().__init__(
+                parent, playback_state, icon, id, pos, size, style, validator, name
+            )
 
     class MarkerMaticButtonEvent(wx.lib.buttons.GenButtonEvent):
         def IsChecked(self) -> bool:
@@ -123,12 +139,12 @@ else:
             self.SetBitmapDisabled(bitmap_bundle_on)
 
     class NoBorderBitmapToggle(wx.BitmapToggleButton):
-        playback_state: Optional[constants.PlaybackState]
+        playback_state: constants.PlaybackState
 
         def __init__(
             self,
             parent,
-            playback_state: Optional[constants.PlaybackState] = None,
+            playback_state: constants.PlaybackState,
             icon: str = str(),
             id=wx.ID_ANY,
             pos=wx.DefaultPosition,

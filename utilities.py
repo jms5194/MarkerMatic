@@ -1,6 +1,7 @@
 import inspect
 import ipaddress
 import os.path
+import platform
 import threading
 import time
 from typing import Callable, List
@@ -35,6 +36,7 @@ class DawConsoleBridge:
 
     def __init__(self):
         logger.info(f"Initializing DawConsoleBridge, Version {constants.VERSION}")
+        logger.info(f"Platform: {platform.platform()}")
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
@@ -89,6 +91,8 @@ class DawConsoleBridge:
         external_control_osc_port,
         external_control_midi_port,
         mmc_control_enabled,
+        allow_loading_while_playing,
+        cue_list_player,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
@@ -122,6 +126,10 @@ class DawConsoleBridge:
                 external_control_midi_port
             )
             updater["main"]["mmc_control_enabled"] = str(mmc_control_enabled)
+            updater["main"]["allow_loading_while_playing"] = str(
+                allow_loading_while_playing
+            )
+            updater["main"]["cue_list_player"] = str(cue_list_player)
         except Exception as e:
             logger.error(f"Failed to update config file: {e}")
         with open(self._ini_path, "w") as file:
@@ -157,18 +165,18 @@ class DawConsoleBridge:
         thread.start()
 
     def start_threads(self):
-        # Start all OSC server threads
+        # Start all OSC server threads, reinstantiating DAW and Console connections
         logger.info("Starting threads")
         if settings.daw_type in DAWS:
             daw_type = DAWS[settings.daw_type]
-            if not isinstance(self.daw, daw_type):
-                self.daw = daw_type()
+            self.daw = daw_type()
             self.daw.start_managed_threads(self.start_managed_thread)
+        else:
+            logger.error("DAW is not supported!")
         self.start_managed_thread("heartbeat_thread", self.heartbeat_loop)
         if settings.console_type in CONSOLES:
             console_type = CONSOLES[settings.console_type]
-            if not isinstance(self.console, console_type):
-                self.console = console_type()
+            self.console = console_type()
             self.console.start_managed_threads(self.start_managed_thread)
         else:
             logger.error("Console is not supported!")

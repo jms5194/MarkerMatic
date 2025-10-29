@@ -13,3 +13,5 @@ __pycache__/
 /.ruff_cache/
 .env
 /.eggs/
+VERSION
+pyinstaller_version.txt

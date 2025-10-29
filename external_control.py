@@ -1,5 +1,6 @@
 import threading
 import time
+from collections.abc import Callable
 from typing import Optional
 
 import mido
@@ -48,26 +49,16 @@ def map_osc_external_control_dispatcher(dispatcher: Dispatcher) -> None:
     dispatcher.map("/markermatic/marker", _handle_marker)
 
 
-def _handle_mode_change(_: str, mode: str) -> None:
-    try:
-        playback_state = PlaybackState(mode)
-    except ValueError:
-        logger.warning("%s is not a supported playback state", mode)
-        return
-    pub.sendMessage(PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=playback_state)
+def _handle_mode_change(_address: str, mode: list[PlaybackState], *_) -> None:
+    pub.sendMessage(PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=mode[0])
 
 
-def _handle_transport_change(_: str, mode: str) -> None:
-    try:
-        playback_state = TransportAction(mode)
-    except ValueError:
-        logger.warning("%s is not a supported transport state", mode)
-        return
-    pub.sendMessage(PyPubSubTopics.TRANSPORT_ACTION, transport_action=playback_state)
+def _handle_transport_change(_address: str, action: list[TransportAction], *_) -> None:
+    pub.sendMessage(PyPubSubTopics.TRANSPORT_ACTION, transport_action=action[0])
 
 
 def _handle_marker(_: str, marker_name: Optional[str]) -> None:
-    if marker_name is not None:
+    if marker_name:
         pub.sendMessage(PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name=marker_name)
     else:
         pub.sendMessage(
@@ -116,13 +107,38 @@ class MidiPortUnavailableError(Exception):
     pass
 
 
+_midi_ports: list[str] = [constants.MIDI_PORT_NONE]
+_midi_ports_lock = threading.Lock()
+
+
 def get_midi_ports() -> list[str]:
-    # Returns a list of available MIDI input ports.
+    """Returns the cached list of available MIDI input ports"""
+    with _midi_ports_lock:
+        return _midi_ports
+
+
+def refresh_midi_ports(
+    callback: Optional[Callable[[list[str]], None]] = None,
+) -> None:
+    """Starts a new thread and refreshes the cached list of available MIDI
+    ports, optionally calling a callback function with the result"""
+    threading.Thread(target=_refresh_midi_ports, args=(callback,)).start()
+
+
+def _refresh_midi_ports(
+    callback: Optional[Callable[[list[str]], None]] = None,
+) -> None:
+    """Refreshes the cached list of available MIDI ports, optionally calling a
+    callback function with the result"""
     try:
-        return list(dict.fromkeys(mido.get_input_names()))  # pyright: ignore[reportAttributeAccessIssue]
+        midi_ports = [constants.MIDI_PORT_NONE]
+        midi_ports.extend(dict.fromkeys(mido.get_input_names()))  # pyright: ignore[reportAttributeAccessIssue]
+        with _midi_ports_lock:
+            _midi_ports = midi_ports
+            if callable(callback):
+                callback(_midi_ports)
     except Exception as e:
         logger.error(f"Error getting MIDI ports: {e}")
-        return []
 
 
 def _handle_midi_message(message: mido.Message) -> None:

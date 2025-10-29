@@ -7,10 +7,18 @@ import appdirs
 import constants
 
 
-def setup_logger():
-    log_dir = appdirs.user_log_dir(
+def get_log_dir():
+    return appdirs.user_log_dir(
         constants.APPLICATION_NAME, appauthor=constants.APPLICATION_AUTHOR
     )
+
+
+def get_log_file(log_dir=get_log_dir()) -> str:
+    return os.path.join(log_dir, constants.LOG_FILENAME)
+
+
+def setup_logger():
+    log_dir = get_log_dir()
     if os.path.isdir(log_dir):
         pass
     else:
@@ -28,7 +36,7 @@ def setup_logger():
 
     # File handler (rotating log files)
     file_handler = RotatingFileHandler(
-        os.path.join(log_dir, constants.LOG_FILENAME),
+        get_log_file(log_dir),
         maxBytes=1024 * 1024,  # 1MB
         backupCount=5,
     )
