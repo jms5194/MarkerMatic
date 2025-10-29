@@ -28,7 +28,9 @@ class DigitalPerformer(Daw):
         self.new_marker_name = ""
         self.is_playing = False
         self.is_recording = False
+        self.transport_state_validated = threading.Event()
         self.digitalperformer_osc_server = None
+        self.markers_to_ignore = ["Auto Record Start", "Memory Start", "Sequence Start", "Sequence End"]
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
@@ -62,7 +64,8 @@ class DigitalPerformer(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-    def _get_current_digital_performer_osc_port(self):
+    @staticmethod
+    def _get_current_digital_performer_osc_port():
         zeroconf_type = "_osc._tcp.local."
         zeroconf_name = "Digital Performer OSC"
 
@@ -119,25 +122,25 @@ class DigitalPerformer(Daw):
         sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
 
-        # Set range to ignore the markers for sequence start and end, etc.
-        for i in range(6, marker_qty+2):
+        for i in range(3, marker_qty + 3):
             max_length = 36
             test_name = args[i]
             # Remove the timestamp at the end of the name that DP returns
             test_name = test_name[:-9]
-            if settings.name_only_match:
-                try:
-                    test_name = test_name.split(" ")
-                    # Remove string slices from max_length to deal with removed number
-                    max_length = max_length - len(test_name[0])
-                    test_name = test_name[1:]
-                    test_name = " ".join(test_name)
-                except Exception as e:
-                    logger.error(f"Unable to format string for name only match:{e}")
-            # DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
-            if test_name == self.name_to_match[:max_length]:
-                self._goto_marker_by_id(sel_list_cookie, i-3)
-                break
+            if not test_name.startswith(tuple(self.markers_to_ignore)):
+                if settings.name_only_match:
+                    try:
+                        test_name = test_name.split(" ")
+                        # Remove string slices from max_length to deal with removed number
+                        max_length = max_length - len(test_name[0])
+                        test_name = test_name[1:]
+                        test_name = " ".join(test_name)
+                    except Exception as e:
+                        logger.error(f"Unable to format string for name only match:{e}")
+                # DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
+                if test_name == self.name_to_match[:max_length]:
+                    self._goto_marker_by_id(sel_list_cookie, i-3)
+                    break
 
         # Sel List must be deleted after use
         with self.digitalperformer_send_lock:
@@ -155,7 +158,7 @@ class DigitalPerformer(Daw):
             if val == 0:
                 playing = False
                 recording = False
-            elif val == 1:
+            elif val == 2:
                 playing = True
                 recording = False
             elif val == 4:
@@ -173,6 +176,7 @@ class DigitalPerformer(Daw):
         elif recording is False:
             self.is_recording = False
             logger.info("Digital Performer is not recording")
+        self.transport_state_validated.set()
 
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
@@ -180,7 +184,6 @@ class DigitalPerformer(Daw):
             self.digitalperformer_client.send_message("/API_Version/Get", None)
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
-        from app_settings import settings
         with self.digitalperformer_send_lock:
             # Selecting a marker in a SelList moves the playhead to that location
             self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
@@ -211,8 +214,8 @@ class DigitalPerformer(Daw):
     def get_marker_id_by_name(self, name: str):
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
-
-        if self.is_playing is False:
+        self.transport_state_validated.wait()
+        if (not self.is_playing) or settings.allow_loading_while_playing:
             self.name_to_match = name
             if settings.name_only_match:
                 try:
@@ -257,7 +260,7 @@ class DigitalPerformer(Daw):
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
         self._update_current_transport_state()
-
+        self.transport_state_validated.clear()
         if (
             settings.marker_mode is PlaybackState.RECORDING
             and self.is_recording is True
@@ -265,7 +268,7 @@ class DigitalPerformer(Daw):
             self._place_marker_with_name(cue)
         elif (
             settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-            and self.is_playing is False):
+        ):
             self.get_marker_id_by_name(cue)
 
     def _shutdown_servers(self):
