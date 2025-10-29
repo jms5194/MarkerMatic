@@ -16,10 +16,10 @@ from . import Daw
 
 class ProTools(Daw):
     type = "ProTools"
-    _shutdown_server_event = threading.Event()
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
         self.pt_engine_connection = None
         self.pt_send_lock = threading.Lock()
         pub.subscribe(

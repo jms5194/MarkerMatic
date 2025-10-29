@@ -16,10 +16,10 @@ from . import Daw, configure_bitwig
 
 class Bitwig(Daw):
     type = "Bitwig Studio"
-    _shutdown_or_restart_server_event = threading.Event()
 
     def __init__(self):
         super().__init__()
+        self._shutdown_or_restart_server_event = threading.Event()
         self.bitwig_send_lock = threading.Lock()
         self.gateway_entry_point = None
         self.marker_dict = {}

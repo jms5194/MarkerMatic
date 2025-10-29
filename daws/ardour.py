@@ -15,13 +15,13 @@ from . import Daw, configure_ardour
 
 class Ardour(Daw):
     type = "Ardour"
-    _shutdown_server_event = threading.Event()
-    _ardour_responded_event = threading.Event()
-    _ardour_heartbeat_event = threading.Event()
-    _resume_after_load = False
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
+        self._ardour_responded_event = threading.Event()
+        self._ardour_heartbeat_event = threading.Event()
+        self._resume_after_load = False
         self.ardour_send_lock = threading.Lock()
         self.name_to_match = ""
         self.is_playing = False

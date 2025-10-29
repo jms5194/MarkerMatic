@@ -16,13 +16,13 @@ from . import Daw
 
 class DigitalPerformer(Daw):
     type = "Digital Performer"
-    _shutdown_server_event = threading.Event()
-    _connected = threading.Event()
-    _connection_check_lock = threading.Lock()
-    _connection_timeout_counter = 0
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
+        self._connected = threading.Event()
+        self._connection_check_lock = threading.Lock()
+        self._connection_timeout_counter = 0
         self.digitalperformer_send_lock = threading.Lock()
         self.name_to_match = ""
         self.new_marker_name = ""

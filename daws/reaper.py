@@ -14,13 +14,13 @@ from . import Daw, configure_reaper
 
 class Reaper(Daw):
     type = "Reaper"
-    _shutdown_server_event = threading.Event()
-    _connected = threading.Event()
-    _connection_check_lock = threading.Lock()
-    _connection_timeout_counter = 0
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
+        self._connected = threading.Event()
+        self._connection_check_lock = threading.Lock()
+        self._connection_timeout_counter = 0
         self.reaper_send_lock = threading.Lock()
         self.name_to_match = ""
         self.is_playing = False
