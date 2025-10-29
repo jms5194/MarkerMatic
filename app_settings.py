@@ -32,6 +32,7 @@ class ThreadSafeSettings:
             "external_control_osc_port": 49103,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
             "allow_loading_while_playing": False,
+            "cue_list_player": 1,
         }
 
     @property
@@ -245,6 +246,19 @@ class ThreadSafeSettings:
         with self._lock:
             self._settings["allow_loading_while_playing"] = value
 
+    @property
+    def cue_list_player(self) -> int:
+        with self._lock:
+            return self._settings["cue_list_player"]
+
+    @cue_list_player.setter
+    def cue_list_player(self, value: int):
+        with self._lock:
+            cue_list_player_num = int(value)
+            if not validate_cue_list_player(cue_list_player_num):
+                raise ValueError("Invalid ControlPointAddress for CueListPlayer")
+            self._settings["cue_list_player"] = cue_list_player_num
+
     def update_from_config_file(self, path: str) -> None:
         """Updates the currently loaded settings from the contents of the config file"""
         logger.info("Loading settings from config file")
@@ -275,6 +289,7 @@ class ThreadSafeSettings:
                 "repeater_receive_port": "default_repeater_receive_port",
                 "reaper_receive_port": "default_reaper_receive_port",
                 "external_control_osc_port": "external_control_osc_port",
+                "cue_list_player": "cue_list_player",
             }
             for settings_name, config_name in int_properties.items():
                 self._settings[settings_name] = config.getint(
@@ -322,3 +337,8 @@ settings = ThreadSafeSettings()
 
 def validate_port_num(port_num: int) -> bool:
     return 1 <= port_num <= 65535
+
+
+def validate_cue_list_player(cue_list_player_num: int) -> bool:
+    """Validate that a Cue List Player's index is a valid human-readable/display value, between 1 and 127, inclusive"""
+    return 1 <= cue_list_player_num <= 127
