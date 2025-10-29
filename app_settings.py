@@ -1,6 +1,7 @@
 import configparser
 import threading
 from configparser import ConfigParser
+from logging import Logger
 
 import constants
 from consoles import DiGiCo
@@ -304,6 +305,16 @@ class ThreadSafeSettings:
                 )
             except Exception as e:
                 logger.warning("Could not load setting %s. %s", settings_name, e)
+            self.log_settings()
+
+    def log_settings(self, logger: Logger = logger) -> None:
+        """Logs the current settings values, useful for troubleshooting"""
+        logger.info("Current application settings:")
+        max_length = max(len(setting) for setting in self._settings)
+        for setting in self._settings:
+            logger.info(
+                f"{setting:>{max_length}.{max_length}}: {self._settings[setting]}"
+            )
 
 
 settings = ThreadSafeSettings()

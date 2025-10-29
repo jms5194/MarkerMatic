@@ -959,7 +959,7 @@ class PrefsPanel(wx.Panel):
 
 if __name__ == "__main__":
     try:
-        logger.info(f"Starting {constants.APPLICATION_NAME} Application")
+        logger.info("Starting wxPython GUI")
         app = wx.App(False)
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)

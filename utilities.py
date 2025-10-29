@@ -1,6 +1,7 @@
 import inspect
 import ipaddress
 import os.path
+import platform
 import threading
 import time
 from typing import Callable, List
@@ -35,6 +36,7 @@ class DawConsoleBridge:
 
     def __init__(self):
         logger.info(f"Initializing DawConsoleBridge, Version {constants.VERSION}")
+        logger.info(f"Platform: {platform.platform()}")
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
