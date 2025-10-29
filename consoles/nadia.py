@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from logger_config import logger
 from pubsub import pub
 from pythonosc import udp_client
@@ -61,7 +61,8 @@ class Nadia(Console):
             pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
-    def _message_received(self, *_) -> None:
+    @staticmethod
+    def _message_received(*_) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:

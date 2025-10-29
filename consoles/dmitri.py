@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Optional, Tuple, List, Iterator
+from typing import Any, Callable, Tuple, List, Iterator
 from logger_config import logger
 
 from pubsub import pub
@@ -18,6 +18,7 @@ class CustomOscMessage(OscMessage):
     # Extends python-osc to handle custom type tag "A"
 
     def __init__(self, dgram: bytes) -> None:
+        super().__init__(dgram)
         self._dgram = dgram
         self._parameters = []  # type: List[Any]
         self._parse_datagram()
@@ -25,7 +26,8 @@ class CustomOscMessage(OscMessage):
     def __str__(self):
         return f"{self.address} {' '.join(str(p) for p in self.params)}"
 
-    def _get_control_point_address(self, dgram: bytes, start_index: int) -> Tuple[int, int]:
+    @staticmethod
+    def _get_control_point_address(dgram: bytes, start_index: int) -> Tuple:
         if len(dgram[start_index:]) < 16:
             raise ValueError(
                 "Not enough data for Control Point Address Type (needs 16 bytes)"
@@ -199,7 +201,8 @@ class Dmitri(Console):
             pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=new_cue)
         self._message_received()
 
-    def _message_received(self, *_) -> None:
+    @staticmethod
+    def _message_received(*_) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:
