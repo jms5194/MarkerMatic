@@ -1,18 +1,18 @@
-import time
-from typing import Any, Callable, Tuple, List, Iterator
-from logger_config import logger
-
-from pubsub import pub
-import pythonosc
-from pythonosc import udp_client
-from pythonosc.osc_message import OscMessage, osc_types, ParseError
-
 import struct
+import time
+from typing import Any, Callable, Iterator, List, Tuple
+
+import pythonosc
+from pubsub import pub
+from pythonosc import udp_client
+from pythonosc.osc_message import OscMessage, ParseError, osc_types
 
 import constants
 from constants import PyPubSubTopics
+from logger_config import logger
 
 from . import Console, Feature
+
 
 class CustomOscMessage(OscMessage):
     # Extends python-osc to handle custom type tag "A"
@@ -36,7 +36,7 @@ class CustomOscMessage(OscMessage):
         return (
             struct.unpack(">8h", dgram[start_index : start_index + 16]),
             start_index + 16,
-        ) # return (value, remaining_data)
+        )  # return (value, remaining_data)
 
     def _parse_datagram(self) -> None:
         # Custom datagram parsing to support the Control Point Address type tag
@@ -138,9 +138,9 @@ class CustomOscMessage(OscMessage):
 pythonosc.osc_message.OscMessage = CustomOscMessage
 
 
-class Dmitri(Console):
+class DMitri(Console):
     fixed_send_port: int = 18033  # pyright: ignore[reportIncompatibleVariableOverride]
-    type = "D'Mitri"
+    type = "Meyer Sound D-Mitri"
     supported_features = [Feature.CUE_LIST_PLAYER]
     _client: udp_client.DispatchClient
     _sent_subscribe = False
@@ -153,6 +153,7 @@ class Dmitri(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
+
         self.selected_list = settings.cue_list_player
 
         self._client = udp_client.DispatchClient(
@@ -189,12 +190,27 @@ class Dmitri(Console):
         -32730 = ciName
         -32697 = ciID
         """
-        _cur_cue_name_cpa = (-32751, -32701, -32666, -32730, self.selected_list - 1, 0, 0, 0)
-        _cue_cue_id_cpa = (-32751, -32701, -32666, -32697, self.selected_list - 1, 0, 0, 0)
-        if (
-            args[1] == _cur_cue_name_cpa
-            and args[3] == _cue_cue_id_cpa
-        ):
+        _cur_cue_name_cpa = (
+            -32751,
+            -32701,
+            -32666,
+            -32730,
+            self.selected_list - 1,
+            0,
+            0,
+            0,
+        )
+        _cue_cue_id_cpa = (
+            -32751,
+            -32701,
+            -32666,
+            -32697,
+            self.selected_list - 1,
+            0,
+            0,
+            0,
+        )
+        if args[1] == _cur_cue_name_cpa and args[3] == _cue_cue_id_cpa:
             cue_name = str(args[2])
             cue_id = str(args[4])
             new_cue = cue_id + " " + cue_name
@@ -218,7 +234,10 @@ class Dmitri(Console):
                 "/subscribe", f"Automation {self.selected_list} Active Cue ID"
             )
             self._client.send_message("/log", "MarkerMatic is connected.")
-            self._client.send_message("/log", f"MarkerMatic is subscribing to information about Cue List Player {self.selected_list}")
+            self._client.send_message(
+                "/log",
+                f"MarkerMatic is subscribing to information about Cue List Player {self.selected_list}",
+            )
             self._client.send_message(
                 "/subscribe", f"Automation {self.selected_list} Active Cue Name"
             )

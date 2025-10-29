@@ -1,18 +1,19 @@
 import time
 from typing import Any, Callable
-from logger_config import logger
+
 from pubsub import pub
 from pythonosc import udp_client
 
 import constants
 from constants import PyPubSubTopics
+from logger_config import logger
 
 from . import Console, Feature
 
 
 class Nadia(Console):
     fixed_send_port: int = 28133  # pyright: ignore[reportIncompatibleVariableOverride]
-    type = "Nadia"
+    type = "Meyer Sound NADIA"
     supported_features = [Feature.CUE_LIST_PLAYER]
     _client: udp_client.DispatchClient
     _sent_subscribe = False
@@ -54,7 +55,10 @@ class Nadia(Console):
             self._message_received()
 
     def _subscribed_data_received(self, _address, *args):
-        if args[1] == f"CueListPlayer {self.selected_list} Active Cue Name" and args[3] == f"CueListPlayer {self.selected_list} Active Cue ID":
+        if (
+            args[1] == f"CueListPlayer {self.selected_list} Active Cue Name"
+            and args[3] == f"CueListPlayer {self.selected_list} Active Cue ID"
+        ):
             cue_name = str(args[2])
             cue_id = str(args[4])
             new_cue = cue_id + " " + cue_name
@@ -75,6 +79,13 @@ class Nadia(Console):
             logger.info("Subscribing to Meyer control points")
             self._client.send_message("/unsubscribeall", None)
             self._client.send_message("/log", "MarkerMatic is connected.")
-            self._client.send_message("/log", f"MarkerMatic is subscribing to information about Cue List Player {self.selected_list}")
-            self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
-            self._client.send_message("/subscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
+            self._client.send_message(
+                "/log",
+                f"MarkerMatic is subscribing to information about Cue List Player {self.selected_list}",
+            )
+            self._client.send_message(
+                "/subscribe", f"CueListPlayer {self.selected_list} Active Cue ID"
+            )
+            self._client.send_message(
+                "/subscribe", f"CueListPlayer {self.selected_list} Active Cue Name"
+            )

@@ -5,7 +5,7 @@ from .digico import DiGiCo
 from .studervista import StuderVista
 from .theatremix import TheatreMix
 from .yamaha import Yamaha
-from .dmitri import Dmitri
+from .dmitri import DMitri
 from .nadia import Nadia
 
 CONSOLES = {
@@ -15,8 +15,8 @@ CONSOLES = {
     "Studer Vista": StuderVista,
     "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,
-    "Nadia" : Nadia,
-    "D'Mitri" : Dmitri
+    "Meyer Sound NADIA": Nadia,
+    "Meyer Sound D-Mitri": DMitri,
 }
 
 __all__ = [
@@ -30,5 +30,5 @@ __all__ = [
     "TheatreMix",
     "Yamaha",
     "Nadia",
-    "D'Mitri"
+    "DMitri",
 ]
