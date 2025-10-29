@@ -24,13 +24,14 @@ datas = [
 
 ws_hiddenimports = ["websockets", "websockets.legacy"]
 py4j_hiddenimports = ["py4j.java_collections"]
+win32com_imports = ["win32com.shell.shell", "win32com.shell.shellcon"]
 
 a = Analysis(
     ["../main.py"],
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=ws_hiddenimports + py4j_hiddenimports,
+    hiddenimports=ws_hiddenimports + py4j_hiddenimports + win32com_imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
