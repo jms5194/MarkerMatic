@@ -11,6 +11,7 @@ import wx.lib.buttons
 import wx.svg
 import wx.svg._nanosvg
 from pubsub import pub
+from showinfm import show_in_file_manager
 
 import constants
 import ui
@@ -20,7 +21,7 @@ from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import Daw
 import external_control
-from logger_config import logger
+from logger_config import logger, get_log_file
 from utilities import DawConsoleBridge
 
 HALF_INTERNAL_SPACING = 5
@@ -70,6 +71,7 @@ class MainWindow(wx.Frame):
             about_menuitem = help_menu.Prepend(wx.ID_ABOUT)
             help_menu.AppendSeparator()
         documentation_menuitem = help_menu.Append(wx.ID_ANY, "&Documentation")
+        show_log_menuitem = help_menu.Append(wx.ID_ANY, "&Show Log")
         help_menu.AppendSeparator()
         license_menuitem = help_menu.Append(wx.ID_ANY, "&License && Thanks")
         menu_bar.Append(help_menu, "&Help")
@@ -81,6 +83,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_documentation, documentation_menuitem)
         self.Bind(wx.EVT_MENU, self.on_license, license_menuitem)
         self.Bind(wx.EVT_MENU, self.on_preferences, preferences_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_show_log, show_log_menuitem)
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
         pub.subscribe(
@@ -124,6 +127,10 @@ class MainWindow(wx.Frame):
                 console=self.BridgeFunctions.console,
                 icons=self.get_app_icons(),
             )
+
+    def on_show_log(self, _) -> None:
+        """Shows the current log file in the user's file manager"""
+        show_in_file_manager(get_log_file())
 
     def on_close(self, event: wx.CloseEvent | wx.CommandEvent):
         """Handle application shutdown requests from the UI,

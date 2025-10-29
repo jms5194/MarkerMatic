@@ -12,4 +12,5 @@ py4j==0.10.9.9
 Pypubsub==4.0.3
 python-osc==1.9.3
 python-rtmidi==1.5.8
+show-in-file-manager==1.1.5
 wxPython==4.2.3
