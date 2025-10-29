@@ -142,8 +142,11 @@ class DMitri(Console):
     fixed_send_port: int = 18033  # pyright: ignore[reportIncompatibleVariableOverride]
     type = "Meyer Sound D-Mitri"
     supported_features = [Feature.CUE_LIST_PLAYER]
-    _client: udp_client.DispatchClient
-    _sent_subscribe = False
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._client: udp_client.DispatchClient
+        self._sent_subscribe = False
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]

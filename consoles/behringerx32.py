@@ -22,10 +22,13 @@ class BehringerX32(Console):
     fixed_send_port: int = 10023
     type = "Behringer X32"
     supported_features = [Feature.CUE_NUMBER]
-    _client: udp_client.DispatchClient
-    _console_name: str
-    _snapshot_name: str
-    _show_control_mode: BehringerX32ShowControlMode
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._client: udp_client.DispatchClient
+        self._console_name: str
+        self._snapshot_name: str
+        self._show_control_mode: BehringerX32ShowControlMode
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]

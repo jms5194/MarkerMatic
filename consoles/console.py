@@ -17,7 +17,6 @@ class Feature(Enum):
 class Console:
     fixed_receive_port: Optional[int] = None
     fixed_send_port: Optional[int] = None
-    _shutdown_server_event: threading.Event
     supported_features: List[Feature] = []
     type = "Unknown"
 
