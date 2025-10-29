@@ -509,7 +509,7 @@ class PrefsPanel(wx.Panel):
         )
         console_main_section.Add(console_ip_label)
         self.console_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
-        self.console_ip_control.SetMaxLength(15)
+        self.console_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.console_ip_control.SetValue(settings.console_ip)
         console_main_section.Add(
             self.console_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
@@ -580,7 +580,7 @@ class PrefsPanel(wx.Panel):
             wx.StaticText(self, label="Tablet IP:", style=wx.ALIGN_RIGHT)
         )
         self.repeater_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
-        self.repeater_ip_control.SetMaxLength(15)
+        self.repeater_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.repeater_ip_control.SetValue(settings.repeater_ip)
         console_repeater_section.Add(
             self.repeater_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
