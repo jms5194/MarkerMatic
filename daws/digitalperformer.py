@@ -105,7 +105,6 @@ class DigitalPerformer(Daw):
         self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_client.dispatcher.map("/TransportState/Get", self._current_transport_state)
         self.digitalperformer_client.dispatcher.map("/Get_Time", self._place_marker_at_time)
-        self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_client.dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
@@ -181,6 +180,7 @@ class DigitalPerformer(Daw):
             self.digitalperformer_client.send_message("/API_Version/Get", None)
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
+        from app_settings import settings
         with self.digitalperformer_send_lock:
             # Selecting a marker in a SelList moves the playhead to that location
             self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
