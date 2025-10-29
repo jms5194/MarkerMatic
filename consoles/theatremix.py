@@ -14,7 +14,10 @@ class TheatreMix(Console):
     fixed_send_port: int = 32000  # pyright: ignore[reportIncompatibleVariableOverride]
     type = "TheatreMix"
     supported_features = []
-    _client: udp_client.DispatchClient
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._client: udp_client.DispatchClient
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]

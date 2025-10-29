@@ -1,6 +1,7 @@
 import configparser
 import threading
 from configparser import ConfigParser
+from logging import Logger
 
 import constants
 from consoles import DiGiCo
@@ -30,6 +31,8 @@ class ThreadSafeSettings:
             "mmc_control_enabled": False,
             "external_control_osc_port": 49103,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
+            "allow_loading_while_playing": False,
+            "cue_list_player": 1,
         }
 
     @property
@@ -233,6 +236,29 @@ class ThreadSafeSettings:
         with self._lock:
             self._settings["external_control_midi_port"] = value
 
+    @property
+    def allow_loading_while_playing(self) -> bool:
+        with self._lock:
+            return self._settings["allow_loading_while_playing"]
+
+    @allow_loading_while_playing.setter
+    def allow_loading_while_playing(self, value: bool):
+        with self._lock:
+            self._settings["allow_loading_while_playing"] = value
+
+    @property
+    def cue_list_player(self) -> int:
+        with self._lock:
+            return self._settings["cue_list_player"]
+
+    @cue_list_player.setter
+    def cue_list_player(self, value: int):
+        with self._lock:
+            cue_list_player_num = int(value)
+            if not validate_cue_list_player(cue_list_player_num):
+                raise ValueError("Invalid ControlPointAddress for CueListPlayer")
+            self._settings["cue_list_player"] = cue_list_player_num
+
     def update_from_config_file(self, path: str) -> None:
         """Updates the currently loaded settings from the contents of the config file"""
         logger.info("Loading settings from config file")
@@ -263,6 +289,7 @@ class ThreadSafeSettings:
                 "repeater_receive_port": "default_repeater_receive_port",
                 "reaper_receive_port": "default_reaper_receive_port",
                 "external_control_osc_port": "external_control_osc_port",
+                "cue_list_player": "cue_list_player",
             }
             for settings_name, config_name in int_properties.items():
                 self._settings[settings_name] = config.getint(
@@ -274,6 +301,7 @@ class ThreadSafeSettings:
                 "name_only_match": "name_only_match",
                 "always_on_top": "always_on_top",
                 "mmc_control_enabled": "mmc_control_enabled",
+                "allow_loading_while_playing": "allow_loading_while_playing",
             }
             for settings_name, config_name in boolean_properties.items():
                 self._settings[settings_name] = config.getboolean(
@@ -292,6 +320,16 @@ class ThreadSafeSettings:
                 )
             except Exception as e:
                 logger.warning("Could not load setting %s. %s", settings_name, e)
+            self.log_settings()
+
+    def log_settings(self, logger: Logger = logger) -> None:
+        """Logs the current settings values, useful for troubleshooting"""
+        logger.info("Current application settings:")
+        max_length = max(len(setting) for setting in self._settings)
+        for setting in self._settings:
+            logger.info(
+                f"{setting:>{max_length}.{max_length}}: {self._settings[setting]}"
+            )
 
 
 settings = ThreadSafeSettings()
@@ -299,3 +337,8 @@ settings = ThreadSafeSettings()
 
 def validate_port_num(port_num: int) -> bool:
     return 1 <= port_num <= 65535
+
+
+def validate_cue_list_player(cue_list_player_num: int) -> bool:
+    """Validate that a Cue List Player's index is a valid human-readable/display value, between 1 and 127, inclusive"""
+    return 1 <= cue_list_player_num <= 127

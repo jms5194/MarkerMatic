@@ -16,10 +16,10 @@ from . import Daw
 
 class ProTools(Daw):
     type = "ProTools"
-    _shutdown_server_event = threading.Event()
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
         self.pt_engine_connection = None
         self.pt_send_lock = threading.Lock()
         pub.subscribe(
@@ -98,10 +98,7 @@ class ProTools(Daw):
             and self._get_current_transport_state() == "TS_TransportRecording"
         ):
             self._place_marker_with_name(cue)
-        elif (
-            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-            and self._get_current_transport_state() == "TS_TransportStopped"
-        ):
+        elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self._get_marker_id_by_name(cue)
 
     def _get_marker_id_by_name(self, name):
@@ -109,9 +106,10 @@ class ProTools(Daw):
         from app_settings import settings
 
         name_to_match = name
-        if self._get_current_transport_state() not in (
-            "TS_TransportPlaying",
-            "TS_TransportRecording",
+        transport_state = self._get_current_transport_state()
+        if transport_state != "TS_TransportRecording" and (
+            transport_state != "TS_TransportPlaying"
+            or settings.allow_loading_while_playing
         ):
             if settings.name_only_match:
                 name_to_match = name_to_match.split(" ")
@@ -128,6 +126,12 @@ class ProTools(Daw):
                         test_name = " ".join(test_name)
                     if name_to_match == test_name:
                         self._goto_marker_by_loc(memory_loc)
+                        if (
+                            transport_state == "TS_TransportPlaying"
+                            and settings.allow_loading_while_playing
+                        ):
+                            self._pro_tools_stop()
+                            self._pro_tools_play()
                 except Exception:
                     logger.error("No matching memory location found")
                 except grpc._channel._InactiveRpcError:
@@ -138,7 +142,7 @@ class ProTools(Daw):
                     self._open_protools_connection()
 
     def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
-        # Jump playhead to the given memory location
+        """Jump playhead to the given memory location"""
         match_loc_time = str(memory_loc.start_time)
         with self.pt_send_lock:
             try:

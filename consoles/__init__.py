@@ -5,6 +5,8 @@ from .digico import DiGiCo
 from .studervista import StuderVista
 from .theatremix import TheatreMix
 from .yamaha import Yamaha
+from .dmitri import DMitri
+from .nadia import Nadia
 
 CONSOLES = {
     "Behringer X32": BehringerX32,
@@ -13,6 +15,8 @@ CONSOLES = {
     "Studer Vista": StuderVista,
     "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,
+    "Meyer Sound NADIA": Nadia,
+    "Meyer Sound D-Mitri": DMitri,
 }
 
 __all__ = [
@@ -25,4 +29,6 @@ __all__ = [
     "StuderVista",
     "TheatreMix",
     "Yamaha",
+    "Nadia",
+    "DMitri",
 ]

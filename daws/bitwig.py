@@ -16,10 +16,10 @@ from . import Daw, configure_bitwig
 
 class Bitwig(Daw):
     type = "Bitwig Studio"
-    _shutdown_or_restart_server_event = threading.Event()
 
     def __init__(self):
         super().__init__()
+        self._shutdown_or_restart_server_event = threading.Event()
         self.bitwig_send_lock = threading.Lock()
         self.gateway_entry_point = None
         self.marker_dict = {}
@@ -156,17 +156,19 @@ class Bitwig(Daw):
         from app_settings import settings
 
         try:
+            is_playing: bool = self.bitwig_transport.isPlaying().get()
             if (
                 settings.marker_mode is PlaybackState.RECORDING
-                and self.bitwig_transport.isPlaying().get()
+                and is_playing
                 and self.bitwig_transport.isArrangerRecordEnabled().get()
             ):
                 self._place_marker_with_name(cue)
-            elif (
-                settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-                and not self.bitwig_transport.isPlaying().get()
+            elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK and (
+                not is_playing or settings.allow_loading_while_playing
             ):
                 self._goto_marker_by_name(cue)
+                if is_playing:
+                    self.bitwig_transport.jumpToPlayStartPosition()
         except (
             AttributeError,
             Py4JError,

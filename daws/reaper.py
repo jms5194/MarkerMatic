@@ -14,13 +14,13 @@ from . import Daw, configure_reaper
 
 class Reaper(Daw):
     type = "Reaper"
-    _shutdown_server_event = threading.Event()
-    _connected = threading.Event()
-    _connection_check_lock = threading.Lock()
-    _connection_timeout_counter = 0
 
     def __init__(self):
         super().__init__()
+        self._shutdown_server_event = threading.Event()
+        self._connected = threading.Event()
+        self._connection_check_lock = threading.Lock()
+        self._connection_timeout_counter = 0
         self.reaper_send_lock = threading.Lock()
         self.name_to_match = ""
         self.is_playing = False
@@ -185,8 +185,12 @@ class Reaper(Daw):
             self.reaper_client.send_message("/action", 41743)
 
     def _goto_marker_by_id(self, marker_id):
+        from app_settings import settings
+
         with self.reaper_send_lock:
             self.reaper_client.send_message("/marker", int(marker_id))
+        if self.is_playing and settings.allow_loading_while_playing:
+            self._reaper_play()
 
     def _place_marker_with_name(self, marker_name: str):
         logger.info(f"Placed marker for cue: {marker_name}")
@@ -198,7 +202,9 @@ class Reaper(Daw):
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
 
-        if self.is_playing is False:
+        if not self.is_recording and (
+            not self.is_playing or settings.allow_loading_while_playing
+        ):
             self.name_to_match = name
             if settings.name_only_match:
                 self.name_to_match = self.name_to_match.split(" ")
@@ -248,10 +254,7 @@ class Reaper(Daw):
             and self.is_recording is True
         ):
             self._place_marker_with_name(cue)
-        elif (
-            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-            and self.is_playing is False
-        ):
+        elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 
     def _shutdown_servers(self):

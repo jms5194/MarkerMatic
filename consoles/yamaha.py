@@ -38,8 +38,11 @@ class Yamaha(Console):
     fixed_send_port = 49280
     type = "Yamaha"
     supported_features = [Feature.CUE_NUMBER]
-    _client_socket: socket.socket
-    _connection_established = threading.Event()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._client_socket: socket.socket
+        self._connection_established = threading.Event()
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -80,7 +83,7 @@ class Yamaha(Console):
                             f"{self.type} internal scene {scene_internal_id} recalled"
                         )
                         request_scene_info_command = (
-                            "ssinfo_ex MIXER:Lib/Scene {}\n".format(scene_internal_id)
+                            f"ssinfo_ex MIXER:Lib/Scene {scene_internal_id}\n"
                         )
                         self._client_socket.sendall(
                             str.encode(request_scene_info_command)

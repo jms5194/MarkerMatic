@@ -15,10 +15,13 @@ class BehringerXAir(Console):
     fixed_send_port: int = 10024
     type = "Behringer X Air"
     supported_features = [Feature.CUE_NUMBER]
-    _received_real_data = threading.Event()
-    _client: udp_client.DispatchClient
-    _console_name: str
-    _snapshot_name: str
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._received_real_data = threading.Event()
+        self._client: udp_client.DispatchClient
+        self._console_name: str
+        self._snapshot_name: str
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -52,9 +55,7 @@ class BehringerXAir(Console):
     def _snapshot_number_received(self, _address: str, snapshot_number: str) -> None:
         pub.sendMessage(
             PyPubSubTopics.HANDLE_CUE_LOAD,
-            cue="{cue_number} {cue_name}".format(
-                cue_number=snapshot_number, cue_name=self._snapshot_name
-            ),
+            cue=f"{snapshot_number} {self._snapshot_name}",
         )
         self._message_received()
 

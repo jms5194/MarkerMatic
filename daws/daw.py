@@ -7,7 +7,6 @@ from constants import PyPubSubTopics
 
 class Daw:
     type = "Unknown"
-    _shutdown_server_event: threading.Event
 
     def __init__(self) -> None:
         self._shutdown_server_event = threading.Event()

@@ -17,11 +17,14 @@ class StuderVista(Console):
     fixed_receive_port = constants.PORT_STUDER_EMBER_RECEIVE
     type = "Studer Vista"
     supported_features = []
-    _client_socket: socket.socket
-    _connection_established = threading.Event()
-    # TODO: Once we rework heartbeat to be more like DAW connecion checks,
-    # we can likely remove this event
-    _received_real_data = threading.Event()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._client_socket: socket.socket
+        self._connection_established = threading.Event()
+        # TODO: Once we rework heartbeat to be more like DAW connecion checks,
+        # we can likely remove this event
+        self._received_real_data = threading.Event()
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
