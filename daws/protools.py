@@ -3,6 +3,7 @@ import time
 from typing import Any, Callable
 
 import grpc
+from grpc import _channel
 import ptsl
 from ptsl import PTSL_pb2 as pt
 from pubsub import pub
