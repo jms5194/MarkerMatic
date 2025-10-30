@@ -3,8 +3,9 @@ import time
 from typing import Any, Callable
 
 import grpc
-from grpc import _channel
+import grpc._channel
 import ptsl
+from grpc import ChannelConnectivity
 from ptsl import PTSL_pb2 as pt
 from pubsub import pub
 
@@ -21,6 +22,7 @@ class ProTools(Daw):
     def __init__(self):
         super().__init__()
         self._shutdown_server_event = threading.Event()
+        self.connected = threading.Event()
         self.pt_engine_connection = None
         self.pt_send_lock = threading.Lock()
         pub.subscribe(
@@ -52,10 +54,29 @@ class ProTools(Daw):
                     pub.sendMessage(
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True
                     )
-                    return
+                    self.connected.set()
+                    # Subscribe to the the channel connectivity status
+                    self.pt_engine_connection.client.channel.subscribe(
+                        self._on_connectivity_status
+                    )
+                    # Loop until the server is disconnected or restarted
+                    while (
+                        self.connected.is_set()
+                        and not self._shutdown_server_event.is_set()
+                    ):
+                        time.sleep(constants.MESSAGE_TIMEOUT_SECONDS)
             except Exception:
                 logger.error("Unable to connect to Pro Tools. Retrying in 1 second")
                 time.sleep(1)
+
+    def _on_connectivity_status(self, status: ChannelConnectivity) -> None:
+        if status is not ChannelConnectivity.READY:
+            pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
+            self.connected.clear()
+            # Clear the engine connection so further messages can't be sent
+            # since this makes the app hang and gRPC gets mad
+            with self.pt_send_lock:
+                self.pt_engine_connection = None
 
     def _place_marker_with_name(self, marker_name):
         with self.pt_send_lock:
