@@ -46,7 +46,7 @@ OPTIONS = {
         "NSLocalNetworkUsageDescription": f"{constants.APPLICATION_NAME} communicates with your console to detect cue loads",
         "NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac": True,
     },
-    "packages": ["google.protobuf", "google._upb"],
+    "packages": ["google.protobuf", "google._upb", "zeroconf"],
 }
 
 setup(
