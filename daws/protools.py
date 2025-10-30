@@ -55,7 +55,7 @@ class ProTools(Daw):
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True
                     )
                     self.connected.set()
-                    # Subscribe to the the channel connectivity status
+                    # Subscribe to the channel connectivity status
                     self.pt_engine_connection.client.channel.subscribe(
                         self._on_connectivity_status
                     )

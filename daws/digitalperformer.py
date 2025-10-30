@@ -181,7 +181,10 @@ class DigitalPerformer(Daw):
     def _refresh_control_surfaces(self) -> None:
         with self.digitalperformer_send_lock:
             # Use the API version response as a keep alive
-            self.digitalperformer_client.send_message("/API_Version/Get", None)
+            try:
+                self.digitalperformer_client.send_message("/API_Version/Get", None)
+            except BrokenPipeError:
+                self._connected.clear()
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
         with self.digitalperformer_send_lock:
