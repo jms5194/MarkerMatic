@@ -17,7 +17,7 @@ from . import Daw
 class DigitalPerformer(Daw):
     type = "Digital Performer"
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._shutdown_server_event = threading.Event()
         self._connected = threading.Event()
@@ -48,7 +48,7 @@ class DigitalPerformer(Daw):
         start_managed_thread("daw_connection_thread", self._build_digitalperformer_osc_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
-    def _daw_connection_monitor(self):
+    def _daw_connection_monitor(self) -> None:
         while not self._shutdown_server_event.is_set():
             time.sleep(1)
             with self._connection_check_lock:
@@ -89,7 +89,7 @@ class DigitalPerformer(Daw):
             logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
             return dp_port
 
-    def _build_digitalperformer_osc_servers(self):
+    def _build_digitalperformer_osc_servers(self) -> None:
         # Connect to Digital Performer via OSC
         logger.info("Starting Digital Performer OSC server")
         while not self._shutdown_server_event.is_set():
@@ -99,7 +99,7 @@ class DigitalPerformer(Daw):
                     self._get_current_digital_performer_osc_port(),
                     mode="1.0",
                 )
-            except Exception as e:
+            except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
             self._receive_digitalperformer_OSC()
             self._connected.set()
@@ -113,7 +113,7 @@ class DigitalPerformer(Daw):
                 except Exception:
                     time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
-    def _receive_digitalperformer_OSC(self):
+    def _receive_digitalperformer_OSC(self) -> None:
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
         self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
         self.digitalperformer_client.dispatcher.map("/TransportState/Get", self._current_transport_state)
@@ -127,7 +127,7 @@ class DigitalPerformer(Daw):
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
-    def _marker_matcher(self, osc_address, *args):
+    def _marker_matcher(self, osc_address: str, *args) -> None:
         from app_settings import settings
         sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
@@ -156,11 +156,11 @@ class DigitalPerformer(Daw):
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/SelList_Delete", sel_list_cookie)
 
-    def _update_current_transport_state(self):
+    def _update_current_transport_state(self) -> None:
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/TransportState/Get", None)
 
-    def _current_transport_state(self, osc_address, val):
+    def _current_transport_state(self, osc_address: str, val) -> None:
         # Watches what the Digital Performer playhead is doing.
         playing = None
         recording = None
@@ -198,18 +198,18 @@ class DigitalPerformer(Daw):
                     self._connected.clear()
                     self._shutdown_servers()
 
-    def _goto_marker_by_id(self, list_cookie, marker_id):
+    def _goto_marker_by_id(self, list_cookie: int, marker_id: str) -> None:
         with self.digitalperformer_send_lock:
             # Selecting a marker in a SelList moves the playhead to that location
             self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
 
-    def _place_marker_with_name(self, marker_name: str):
+    def _place_marker_with_name(self, marker_name: str) -> None:
         with self.digitalperformer_send_lock:
             self.new_marker_name = marker_name
             # Get our current playhead time in samples
             self.digitalperformer_client.send_message("/Get_Time", 6)
 
-    def _place_marker_at_time(self, osc_address, *args):
+    def _place_marker_at_time(self, osc_address: str, *args) -> None:
         if osc_address == "/Get_Time":
             try:
                 cur_pos = args[0]
@@ -226,7 +226,7 @@ class DigitalPerformer(Daw):
                 logger.error(f"Unable to resolve current playhead time: {e}")
             logger.info(f"Placed marker for cue: {self.new_marker_name}")
 
-    def get_marker_id_by_name(self, name: str):
+    def get_marker_id_by_name(self, name: str) -> None:
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
         self.transport_state_validated.wait()
@@ -243,7 +243,7 @@ class DigitalPerformer(Daw):
                 # Request the list of all markers currently in project
                 self.digitalperformer_client.send_message("/MarkersSelList/Get_NewSelList", None)
 
-    def _incoming_transport_action(self, transport_action: TransportAction):
+    def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         try:
             if transport_action is TransportAction.PLAY:
                 self._digitalperformer_play()
@@ -254,15 +254,15 @@ class DigitalPerformer(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _digitalperformer_play(self):
+    def _digitalperformer_play(self) -> None:
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/TransportState", 2)
 
-    def _digitalperformer_stop(self):
+    def _digitalperformer_stop(self) -> None:
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/TransportState", 0)
 
-    def _digitalperformer_rec(self):
+    def _digitalperformer_rec(self) -> None:
         from app_settings import settings
 
         settings.marker_mode = PlaybackState.RECORDING
@@ -286,7 +286,7 @@ class DigitalPerformer(Daw):
         ):
             self.get_marker_id_by_name(cue)
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.digitalperformer_client:
                 self.digitalperformer_client.close()
