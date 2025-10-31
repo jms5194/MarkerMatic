@@ -65,7 +65,6 @@ class DigitalPerformer(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-
     @staticmethod
     def _get_current_digital_performer_osc_port():
         zeroconf_type = "_osc._tcp.local."
@@ -100,10 +99,11 @@ class DigitalPerformer(Daw):
                     self._get_current_digital_performer_osc_port(),
                     mode="1.0",
                 )
-            except Exception:
+            except Exception as e:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
             self._receive_digitalperformer_OSC()
-            while not self._shutdown_server_event.is_set():
+            self._connected.set()
+            while (not self._shutdown_server_event.is_set()) and self._connected.is_set():
                 try:
                     self._refresh_control_surfaces()
                     while not self._shutdown_server_event.is_set():
@@ -123,7 +123,7 @@ class DigitalPerformer(Daw):
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
             self._connected.set()
-            pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
+        pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
@@ -289,6 +289,7 @@ class DigitalPerformer(Daw):
     def _shutdown_servers(self):
         try:
             if self.digitalperformer_client:
+                self.digitalperformer_client.close()
                 self.digitalperformer_client = None
             logger.info("Digital Performer OSC Server shutdown completed")
         except Exception as e:
