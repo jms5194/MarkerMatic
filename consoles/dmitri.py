@@ -184,7 +184,7 @@ class DMitri(Console):
         else:
             self._message_received()
 
-    def _subscribed_data_received(self, _address, *args):
+    def _subscribed_data_received(self, _address: str, *args) -> None:
         """
         Defining the control point addresses with indices values from Meyer's cp_indices.py
         -32751 = ciAutomation

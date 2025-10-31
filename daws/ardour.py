@@ -46,7 +46,8 @@ class Ardour(Daw):
         start_managed_thread("daw_connection_thread", self._build_ardour_osc_servers)
         start_managed_thread("daw_heartbeat_thread", self._send_ardour_osc_config)
 
-    def _validate_ardour_prefs(self):
+    @staticmethod
+    def _validate_ardour_prefs():
         # Check if OSC is turned on in Ardour's config file.
         # If not, enable it and restart Ardour.
         try:
@@ -72,7 +73,7 @@ class Ardour(Daw):
         except Exception as e:
             logger.error(f"Error validating Ardour preferences: {e}")
 
-    def _receive_ardour_OSC(self):
+    def _receive_ardour_OSC(self) -> None:
         # Receives and distributes OSC from Ardour, based on matching OSC values
         self.ardour_dispatcher.map("/transport_play", self._current_transport_state)
         self.ardour_dispatcher.map("/transport_stop", self._current_transport_state)
@@ -80,7 +81,7 @@ class Ardour(Daw):
         self.ardour_dispatcher.map("/heartbeat", self._ardour_connected_status)
         self.ardour_dispatcher.map("/set_surface", self._ardour_responded_flag_set)
 
-    def _build_ardour_osc_servers(self):
+    def _build_ardour_osc_servers(self) -> None:
         # Connect to Ardour via OSC
         while not self._shutdown_server_event.is_set():
             logger.info("Starting Ardour OSC server")
@@ -97,7 +98,7 @@ class Ardour(Daw):
                 logger.error(f"Ardour OSC server startup error: {e}")
             time.sleep(0.1)
 
-    def _send_ardour_osc_config(self):
+    def _send_ardour_osc_config(self) -> None:
         while not self._shutdown_server_event.is_set():
             if not self._ardour_responded_event.is_set():
                 try:
@@ -113,19 +114,19 @@ class Ardour(Daw):
                     logger.error("Ardour not yet available, retrying in 1 second")
             time.sleep(1)
 
-    def _ardour_connected_status(self, osc_address, val):
+    def _ardour_connected_status(self, osc_address: str, val) -> None:
         # Watches if Ardour is connected to the OSC server.
         if osc_address == "/heartbeat":
             if val == 1:
                 self.current_heartbeat_timestamp = time.time()
 
-    def _ardour_responded_flag_set(self, osc_address, *args):
+    def _ardour_responded_flag_set(self, osc_address: str, *args) -> None:
         # Watches if Ardour has responded to the OSC server.
         self._ardour_responded_event.set()
         self._ardour_heartbeat_check()
         logger.info("Ardour has responded to OSC server")
 
-    def _ardour_heartbeat_check(self):
+    def _ardour_heartbeat_check(self) -> None:
         # Checks if Ardour is still connected and updates the UI
         # Initial delay to allow Ardour to respond
         time.sleep(2)
@@ -156,7 +157,7 @@ class Ardour(Daw):
                     )
             time.sleep(1)
 
-    def _current_transport_state(self, osc_address, val):
+    def _current_transport_state(self, osc_address: str, val) -> None:
         # Watches what the Ardour playhead is doing.
         playing = None
         recording = None
@@ -189,7 +190,7 @@ class Ardour(Daw):
             self.is_recording = False
             logger.info("Ardour is not recording")
 
-    def _goto_marker_by_name(self, marker_name):
+    def _goto_marker_by_name(self, marker_name: str) -> None:
         from app_settings import settings
 
         if settings.name_only_match:
@@ -198,10 +199,10 @@ class Ardour(Daw):
             with self.ardour_send_lock:
                 self.ardour_client.send_message("/marker", marker_name)
 
-    def get_marker_id_by_name(self, name):
+    def get_marker_id_by_name(self, name: str) -> None:
         pass
 
-    def _get_open_files_for_ardour(self):
+    def _get_open_files_for_ardour(self) -> None:
         # TODO: find a way to match that
         process_name = "Ardour8"
         open_files = []
@@ -214,11 +215,11 @@ class Ardour(Daw):
                 pass
         logger.debug(f"Ardour process open files: {open_files}")
 
-    def _place_marker_with_name(self, marker_name):
+    def _place_marker_with_name(self, marker_name: str) -> None:
         with self.ardour_send_lock:
             self.ardour_client.send_message("/add_marker", marker_name)
 
-    def _incoming_transport_action(self, transport_action):
+    def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         try:
             if transport_action is TransportAction.PLAY:
                 self._ardour_play()
@@ -229,15 +230,15 @@ class Ardour(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _ardour_play(self):
+    def _ardour_play(self) -> None:
         with self.ardour_send_lock:
             self.ardour_client.send_message("/transport_play", 1.0)
 
-    def _ardour_stop(self):
+    def _ardour_stop(self) -> None:
         with self.ardour_send_lock:
             self.ardour_client.send_message("/transport_stop", 1.0)
 
-    def _ardour_rec(self):
+    def _ardour_rec(self) -> None:
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
@@ -271,7 +272,7 @@ class Ardour(Daw):
             self._goto_marker_by_name(cue)
             # TODO: Add name only logic here
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.ardour_osc_server:
                 self.ardour_osc_server.shutdown()

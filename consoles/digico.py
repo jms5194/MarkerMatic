@@ -98,7 +98,7 @@ class DiGiCo(Console):
                 "repeater_osc_thread", self._build_repeater_osc_servers
             )
 
-    def _build_digico_osc_servers(self):
+    def _build_digico_osc_servers(self) -> None:
         # Connect to the Digico console
         logger.info("Starting Digico OSC server")
         from app_settings import settings
@@ -121,7 +121,7 @@ class DiGiCo(Console):
         except Exception as e:
             logger.error(f"Digico OSC server startup error: {e}")
 
-    def _build_repeater_osc_servers(self):
+    def _build_repeater_osc_servers(self) -> None:
         # Connect to Repeater via OSC
         logger.info("Starting Repeater OSC server")
         from app_settings import settings
@@ -148,7 +148,7 @@ class DiGiCo(Console):
 
     # Digico Functions
 
-    def _receive_console_OSC(self):
+    def _receive_console_OSC(self) -> None:
         # Receives and distributes OSC from Digico, based on matching OSC values
         self.digico_dispatcher.map(
             "/Snapshots/Recall_Snapshot/*", self._request_snapshot_info
@@ -160,12 +160,12 @@ class DiGiCo(Console):
         external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
         self.digico_dispatcher.set_default_handler(self._forward_OSC)
 
-    def send_to_console(self, osc_address: str, *args):
+    def send_to_console(self, osc_address: str, *args) -> None:
         # Send an OSC message to the console
         with self.console_send_lock:
             self.console_client.send_message(osc_address, [*args])
 
-    def _console_name_handler(self, osc_address: str, console_name: str):
+    def _console_name_handler(self, osc_address: str, console_name: str) -> None:
         # Receives the console name response and updates the UI.
         from app_settings import settings
 
@@ -183,7 +183,7 @@ class DiGiCo(Console):
         except Exception as e:
             logger.error(f"Console Name Handler Error: {e}")
 
-    def _request_snapshot_info(self, osc_address: str, *args):
+    def _request_snapshot_info(self, osc_address: str, *args) -> None:
         # Receives the OSC for the Current Snapshot Number and uses that to request the cue number/name
         from app_settings import settings
 
@@ -198,7 +198,7 @@ class DiGiCo(Console):
                 "/Snapshots/name/?", current_snapshot_number
             )
 
-    def _request_macro_info(self, osc_address: str, pressed):
+    def _request_macro_info(self, osc_address: str, pressed) -> None:
         # When a Macro is pressed, request the name of the macro
         self.requested_macro_num = osc_address.split("/")[3]
         with self.console_send_lock:
@@ -206,7 +206,7 @@ class DiGiCo(Console):
                 "/Macros/name/?", int(self.requested_macro_num)
             )
 
-    def _macro_name_handler(self, osc_address: str, *args):
+    def _macro_name_handler(self, osc_address: str, *args) -> None:
         # If macros match names, then send behavior to Reaper
         from app_settings import settings
 
@@ -313,7 +313,7 @@ class DiGiCo(Console):
             PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name="Marker from Console"
         )
 
-    def snapshot_OSC_handler(self, osc_address: str, *args):
+    def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
         # Processes the current cue number
         from app_settings import settings
 
@@ -330,10 +330,10 @@ class DiGiCo(Console):
 
     # Repeater Functions
 
-    def _receive_repeater_OSC(self):
+    def _receive_repeater_OSC(self) -> None:
         self.repeater_dispatcher.set_default_handler(self.send_to_console)
 
-    def _forward_OSC(self, osc_address: str, *args):
+    def _forward_OSC(self, osc_address: str, *args) -> None:
         from app_settings import settings
 
         if settings.forwarder_enabled:
@@ -347,7 +347,7 @@ class DiGiCo(Console):
             assert isinstance(self.console_client, udp_client.UDPClient)
             self.console_client.send_message("/Console/Name/?", None)
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.digico_osc_server:
                 self.digico_osc_server.shutdown()

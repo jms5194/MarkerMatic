@@ -57,7 +57,7 @@ class Nadia(Console):
         else:
             self._message_received()
 
-    def _subscribed_data_received(self, _address, *args):
+    def _subscribed_data_received(self, _address: str, *args) -> None:
         if (
             args[1] == f"CueListPlayer {self.selected_list} Active Cue Name"
             and args[3] == f"CueListPlayer {self.selected_list} Active Cue ID"

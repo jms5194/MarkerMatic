@@ -44,7 +44,8 @@ class Bitwig(Daw):
         logger.info("Starting Bitwig Connection thread")
         start_managed_thread("daw_connection_thread", self._open_bitwig_connection)
 
-    def _validate_bitwig_prefs(self):
+    @staticmethod
+    def _validate_bitwig_prefs():
         # If the Bitwig Extensions directory does not contain our Markermatic Bridge, copy it over
         try:
             if not configure_bitwig.verify_markermatic_bridge_in_user_dir():
@@ -53,7 +54,7 @@ class Bitwig(Daw):
         except Exception as e:
             logger.error(f"Unable to install Bitwig extension or error occurred: {e}")
 
-    def _open_bitwig_connection(self):
+    def _open_bitwig_connection(self) -> None:
         while not self._shutdown_server_event.is_set():
             try:
                 self.gateway = JavaGateway()
@@ -78,7 +79,7 @@ class Bitwig(Daw):
                 logger.error("Unable to connect to Bitwig. Retrying")
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
-    def _incoming_transport_action(self, transport_action):
+    def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         try:
             if transport_action is TransportAction.PLAY:
                 self._bitwig_play()
@@ -89,7 +90,7 @@ class Bitwig(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _build_marker_dict(self):
+    def _build_marker_dict(self) -> None:
         try:
             cur_marker_qty = self.bitwig_cuemarkerbank.itemCount().get()
             self.marker_dict = {}
@@ -108,7 +109,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _add_to_marker_dict(self, new_marker_num: int):
+    def _add_to_marker_dict(self, new_marker_num: int) -> None:
         try:
             cur_marker_info = self.gateway_entry_point.getCueMarkerInfo(new_marker_num)
             cur_marker_split = cur_marker_info.split("<>")
@@ -123,7 +124,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _place_marker_with_name(self, marker_name: str):
+    def _place_marker_with_name(self, marker_name: str) -> None:
         # Bitwig markers can only be placed on a bar/beat reference, so will never be 100% accurate
         try:
             cur_marker_qty = self.bitwig_cuemarkerbank.itemCount().get()
@@ -143,7 +144,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _bitwig_reconnect_attempt(self):
+    def _bitwig_reconnect_attempt(self) -> None:
         wx.CallAfter(
             pub.sendMessage,
             PyPubSubTopics.DAW_CONNECTION_STATUS,
@@ -152,7 +153,7 @@ class Bitwig(Daw):
         self._shutdown_servers()
         self._shutdown_or_restart_server_event.set()
 
-    def _handle_cue_load(self, cue: str):
+    def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
 
         try:
@@ -180,7 +181,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _goto_marker_by_name(self, cue: str):
+    def _goto_marker_by_name(self, cue: str) -> None:
         from app_settings import settings
 
         possible_markers = []
@@ -228,7 +229,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _bitwig_play(self):
+    def _bitwig_play(self) -> None:
         try:
             if not self.bitwig_transport.isPlaying().get():
                 self.bitwig_transport.play()
@@ -243,7 +244,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _bitwig_stop(self):
+    def _bitwig_stop(self) -> None:
         try:
             self.bitwig_transport.stop()
         except (
@@ -257,7 +258,7 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _bitwig_rec(self):
+    def _bitwig_rec(self) -> None:
         try:
             if not self.bitwig_transport.isPlaying().get():
                 self.bitwig_transport.record()
@@ -277,6 +278,6 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         logger.info("Closing connection to Bitwig")
         self.gateway.close()

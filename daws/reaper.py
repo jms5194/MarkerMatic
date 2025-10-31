@@ -45,7 +45,7 @@ class Reaper(Daw):
         start_managed_thread("daw_connection_thread", self._build_reaper_osc_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
-    def _daw_connection_monitor(self):
+    def _daw_connection_monitor(self) -> None:
         while not self._shutdown_server_event.is_set():
             time.sleep(1)
             with self._connection_check_lock:
@@ -138,7 +138,7 @@ class Reaper(Daw):
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
-    def _marker_matcher(self, osc_address, test_name):
+    def _marker_matcher(self, osc_address: str, test_name: str) -> None:
         self._message_received()
         # Matches a marker composite name with its Reaper ID
         from app_settings import settings
@@ -152,7 +152,7 @@ class Reaper(Daw):
         if test_name == self.name_to_match:
             self._goto_marker_by_id(marker_id)
 
-    def _current_transport_state(self, osc_address, val):
+    def _current_transport_state(self, osc_address: str, val) -> None:
         self._message_received()
         # Watches what the Reaper playhead is doing.
         playing = None
@@ -184,7 +184,7 @@ class Reaper(Daw):
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 41743)
 
-    def _goto_marker_by_id(self, marker_id):
+    def _goto_marker_by_id(self, marker_id) -> None:
         from app_settings import settings
 
         with self.reaper_send_lock:
@@ -192,13 +192,13 @@ class Reaper(Daw):
         if self.is_playing and settings.allow_loading_while_playing:
             self._reaper_play()
 
-    def _place_marker_with_name(self, marker_name: str):
+    def _place_marker_with_name(self, marker_name: str) -> None:
         logger.info(f"Placed marker for cue: {marker_name}")
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40157)
             self.reaper_client.send_message("/lastmarker/name", marker_name)
 
-    def get_marker_id_by_name(self, name: str):
+    def get_marker_id_by_name(self, name: str) -> None:
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
 
@@ -215,7 +215,7 @@ class Reaper(Daw):
                 # Is there a better way to handle this in OSC only? Max of 512 markers.
                 self.reaper_client.send_message("/device/marker/count", 512)
 
-    def _incoming_transport_action(self, transport_action: TransportAction):
+    def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         try:
             if transport_action is TransportAction.PLAY:
                 self._reaper_play()
@@ -226,15 +226,15 @@ class Reaper(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _reaper_play(self):
+    def _reaper_play(self) -> None:
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 1007)
 
-    def _reaper_stop(self):
+    def _reaper_stop(self) -> None:
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 1016)
 
-    def _reaper_rec(self):
+    def _reaper_rec(self) -> None:
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
@@ -257,7 +257,7 @@ class Reaper(Daw):
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.reaper_osc_server:
                 self.reaper_osc_server.shutdown()
