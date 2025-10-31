@@ -78,7 +78,7 @@ class ProTools(Daw):
             with self.pt_send_lock:
                 self.pt_engine_connection = None
 
-    def _place_marker_with_name(self, marker_name):
+    def _place_marker_with_name(self, marker_name: str) -> None:
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
@@ -99,7 +99,7 @@ class ProTools(Daw):
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
 
-    def _incoming_transport_action(self, transport_action):
+    def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         # If transport actions are received from the console, send to Pro Tools
         try:
             if transport_action is TransportAction.PLAY:
@@ -111,7 +111,7 @@ class ProTools(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _handle_cue_load(self, cue: str):
+    def _handle_cue_load(self, cue: str) -> None:
         # Receives cue information from console and actions based on software mode
         from app_settings import settings
 
@@ -123,7 +123,7 @@ class ProTools(Daw):
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self._get_marker_id_by_name(cue)
 
-    def _get_marker_id_by_name(self, name):
+    def _get_marker_id_by_name(self, name: str) -> None:
         # Match marker by name to the MemoryLocation object it represents
         from app_settings import settings
 
@@ -233,7 +233,7 @@ class ProTools(Daw):
                 self._open_protools_connection()
             return None
 
-    def _pro_tools_rec(self):
+    def _pro_tools_rec(self) -> None:
         # Arm transport and validate proper play state
         with self.pt_send_lock:
             assert self.pt_engine_connection
@@ -257,7 +257,7 @@ class ProTools(Daw):
                 self._open_protools_connection()
             return None
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.pt_engine_connection:
                 self.pt_engine_connection.close()
