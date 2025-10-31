@@ -31,6 +31,7 @@ class DigitalPerformer(Daw):
         self.transport_state_validated = threading.Event()
         self.digitalperformer_osc_server = None
         self.markers_to_ignore = ["Auto Record Start", "Memory Start", "Sequence Start", "Sequence End"]
+        self.digitalperformer_client = None
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
@@ -63,6 +64,7 @@ class DigitalPerformer(Daw):
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
                     )
                     self._connection_timeout_counter = 0
+
 
     @staticmethod
     def _get_current_digital_performer_osc_port():
@@ -179,12 +181,14 @@ class DigitalPerformer(Daw):
         self.transport_state_validated.set()
 
     def _refresh_control_surfaces(self) -> None:
-        with self.digitalperformer_send_lock:
-            # Use the API version response as a keep alive
-            try:
-                self.digitalperformer_client.send_message("/API_Version/Get", None)
-            except BrokenPipeError:
-                self._connected.clear()
+        if self.digitalperformer_client:
+            with self.digitalperformer_send_lock:
+                # Use the API version response as a keep alive
+                try:
+                    self.digitalperformer_client.send_message("/API_Version/Get", None)
+                except BrokenPipeError:
+                    self._connected.clear()
+                    self._shutdown_servers()
 
     def _goto_marker_by_id(self, list_cookie, marker_id):
         with self.digitalperformer_send_lock:
@@ -276,9 +280,8 @@ class DigitalPerformer(Daw):
 
     def _shutdown_servers(self):
         try:
-            if self.digitalperformer_osc_server:
-                self.digitalperformer_osc_server.shutdown()
-                self.digitalperformer_osc_server.server_close()
+            if self.digitalperformer_client:
+                self.digitalperformer_client = None
             logger.info("Digital Performer OSC Server shutdown completed")
         except Exception as e:
             logger.error(f"Error shutting down Digital Performer server: {e}")
