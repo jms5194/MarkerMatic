@@ -181,7 +181,7 @@ class DigitalPerformer(Daw):
         self.transport_state_validated.set()
 
     def _refresh_control_surfaces(self) -> None:
-        if self.digitalperformer_client:
+        if self.digitalperformer_client is not None:
             with self.digitalperformer_send_lock:
                 # Use the API version response as a keep alive
                 try:
