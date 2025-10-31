@@ -198,7 +198,7 @@ class DigitalPerformer(Daw):
                     self._connected.clear()
                     self._shutdown_servers()
 
-    def _goto_marker_by_id(self, list_cookie: int, marker_id: str) -> None:
+    def _goto_marker_by_id(self, list_cookie: int, marker_id: int) -> None:
         with self.digitalperformer_send_lock:
             # Selecting a marker in a SelList moves the playhead to that location
             self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])

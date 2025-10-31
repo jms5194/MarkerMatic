@@ -17,9 +17,9 @@ from . import Console, Feature
 
 
 class RawMessageDispatcher(Dispatcher):
-    def handle_error(self, OSCAddress: str, *args):
+    def handle_error(self, osc_address: str, *args):
         # Handles malformed OSC messages and forwards on to console
-        logger.debug(f"Received malformed OSC message at address: {OSCAddress}")
+        logger.debug(f"Received malformed OSC message at address: {osc_address}")
         try:
             # The last argument contains the raw message data
             raw_data = args[-1] if args else None

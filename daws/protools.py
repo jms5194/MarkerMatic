@@ -233,7 +233,7 @@ class ProTools(Daw):
                 self._open_protools_connection()
             return None
 
-    def _pro_tools_rec(self) -> None:
+    def _pro_tools_rec(self):
         # Arm transport and validate proper play state
         with self.pt_send_lock:
             assert self.pt_engine_connection
