@@ -93,17 +93,25 @@ class DigitalPerformer(Daw):
     def _build_digitalperformer_osc_servers(self):
         # Connect to Digital Performer via OSC
         logger.info("Starting Digital Performer OSC server")
-        self.digitalperformer_client = tcp_client.TCPDispatchClient(
-            constants.IP_LOOPBACK, self._get_current_digital_performer_osc_port(),mode='1.0',
-        )
-        self._receive_digitalperformer_OSC()
         while not self._shutdown_server_event.is_set():
             try:
-                self._refresh_control_surfaces()
-                while not self._shutdown_server_event.is_set():
-                    self.digitalperformer_client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
+                self.digitalperformer_client = tcp_client.TCPDispatchClient(
+                    constants.IP_LOOPBACK,
+                    self._get_current_digital_performer_osc_port(),
+                    mode="1.0",
+                )
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+            self._receive_digitalperformer_OSC()
+            while not self._shutdown_server_event.is_set():
+                try:
+                    self._refresh_control_surfaces()
+                    while not self._shutdown_server_event.is_set():
+                        self.digitalperformer_client.handle_messages(
+                            constants.MESSAGE_TIMEOUT_SECONDS
+                        )
+                except Exception:
+                    time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _receive_digitalperformer_OSC(self):
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
