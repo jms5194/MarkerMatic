@@ -3,6 +3,7 @@ from typing import Any, Callable
 
 from pubsub import pub
 from pythonosc import udp_client
+from pythonosc import osc_message_builder
 
 import constants
 from constants import PyPubSubTopics
@@ -80,7 +81,11 @@ class Nadia(Console):
     def _cue_list_subscribe(self) -> None:
         if hasattr(self, "_client"):
             logger.info("Subscribing to Meyer control points")
-            self._client.send_message("/unsubscribeall", None)
+            # The unsubscribe all message currently throws an error in NADIA. Documented with Meyer as
+            # Jira case NCP-582. Will be corrected in Cuestation 8.6.0 and the following line can be restored then
+            #self._client.send_message("/unsubscribeall", None)
+            self._client.send_message("/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
+            self._client.send_message("/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
             self._client.send_message("/log", "MarkerMatic is connected.")
             self._client.send_message(
                 "/log",
