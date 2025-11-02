@@ -3,7 +3,6 @@ from typing import Any, Callable
 
 from pubsub import pub
 from pythonosc import udp_client
-from pythonosc import osc_message_builder
 
 import constants
 from constants import PyPubSubTopics
