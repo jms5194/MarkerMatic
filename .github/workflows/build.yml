@@ -45,11 +45,13 @@ jobs:
           - os: macos-x86
             setup-python-arch: x64
             arch: x86_64
+            runs-on: macos-13
           - os: macos-arm64
             setup-python-arch: arm64
             arch: arm64
-    # macos-latest is ARM for macOS >= 14
-    runs-on: macos-latest
+            runs-on: macos-latest # macos-latest is ARM for macOS >= 14
+            
+    runs-on: ${{ matrix.runs-on }}
 
     steps:
       # Checkout the project from Github
