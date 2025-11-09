@@ -1,4 +1,3 @@
-import ipaddress
 import os.path
 import platform
 import threading
@@ -7,16 +6,13 @@ from typing import Collection, Optional
 
 import wx
 import wx.adv
-import wx.lib.buttons
-import wx.svg
-import wx.svg._nanosvg
 from pubsub import pub
-from showinfm import show_in_file_manager # pyright: ignore[reportPrivateImportUsage]
+from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImportUsage]
 
 import constants
 import ui
 import utilities
-from app_settings import settings, validate_cue_list_player
+from app_settings import settings
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import Daw
@@ -518,6 +514,7 @@ class PrefsPanel(wx.Panel):
         self.console_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.console_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.console_ip_control.SetValue(settings.console_ip)
+        self.console_ip_control.SetValidator(ui.IPValidator("console"))
         console_main_section.Add(
             self.console_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
@@ -546,12 +543,14 @@ class PrefsPanel(wx.Panel):
         self.console_send_port_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.console_send_port_control.SetMaxLength(5)
         self.console_send_port_control.SetValue(str(settings.console_port))
+        self.console_send_port_control.SetValidator(ui.PortValidator("console send"))
         console_main_ports_section.Add(
             self.console_send_port_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
         self.console_rcv_port_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.console_rcv_port_control.SetMaxLength(5)
         self.console_rcv_port_control.SetValue(str(settings.receive_port))
+        self.console_send_port_control.SetValidator(ui.PortValidator("console receive"))
         console_main_ports_section.Add(
             self.console_rcv_port_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
@@ -570,6 +569,7 @@ class PrefsPanel(wx.Panel):
         self.console_cue_list_player_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.console_cue_list_player_control.SetMaxLength(3)
         self.console_cue_list_player_control.SetValue(str(settings.cue_list_player))
+        self.console_cue_list_player_control.SetValidator(ui.CueListPlayerValidator())
         console_main_section.Add(
             self.console_cue_list_player_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -603,6 +603,7 @@ class PrefsPanel(wx.Panel):
         self.repeater_ip_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.repeater_ip_control.SetMaxLength(constants.MAX_IP_LENGTH)
         self.repeater_ip_control.SetValue(settings.repeater_ip)
+        self.repeater_ip_control.SetValidator(ui.IPValidator("tablet"))
         console_repeater_section.Add(
             self.repeater_ip_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
@@ -629,12 +630,18 @@ class PrefsPanel(wx.Panel):
         self.repeater_send_port_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.repeater_send_port_control.SetMaxLength(5)
         self.repeater_send_port_control.SetValue(str(settings.repeater_port))
+        self.console_send_port_control.SetValidator(
+            ui.PortValidator("repeater receive")
+        )
         console_repeater_ports_section.Add(
             self.repeater_send_port_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
         self.repeater_rcv_port_control = wx.TextCtrl(self, style=wx.TE_CENTER)
         self.repeater_rcv_port_control.SetMaxLength(5)
         self.repeater_rcv_port_control.SetValue(str(settings.repeater_receive_port))
+        self.console_send_port_control.SetValidator(
+            ui.PortValidator("repeater receive")
+        )
         console_repeater_ports_section.Add(
             self.repeater_rcv_port_control, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
@@ -814,11 +821,6 @@ class PrefsPanel(wx.Panel):
 
         # Prefs Window Bindings
         self.Bind(wx.EVT_BUTTON, self.update_button_pressed, update_button)
-        self.console_ip_control.Bind(wx.EVT_TEXT, self.changed_console_ip)
-        self.console_ip_control.Bind(wx.EVT_KILL_FOCUS, self.check_console_ip)
-        self.console_cue_list_player_control.Bind(
-            wx.EVT_KILL_FOCUS, self.check_cue_list_player
-        )
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
         self.repeater_radio_enabled.Bind(
             wx.EVT_CHECKBOX,
@@ -884,6 +886,10 @@ class PrefsPanel(wx.Panel):
         )
 
     def update_button_pressed(self, e):
+        if not self.Validate():
+            logger.info("Preferences panel didn't pass validation")
+            return
+
         logger.info("Updating configuration settings.")
         # Writing the new values from the preferences panel to settings
         try:
@@ -946,48 +952,6 @@ class PrefsPanel(wx.Panel):
         except Exception as e:
             logger.error(f"Error updating configuration: {e}")
         pub.sendMessage(PyPubSubTopics.UPDATE_MAIN_WINDOW_DISPLAY_SETTINGS)
-
-    def changed_console_ip(self, e):
-        # Flag to know if the console IP has been modified in the prefs window
-        self.ip_inspected = False
-
-    def check_console_ip(self, e):
-        # Validates input into the console IP address field
-        # Use the ip_address function from the ipaddress module to check if the input is a valid IP address
-        ip = self.console_ip_control.GetValue()
-
-        if not self.ip_inspected:
-            self.ip_inspected = True
-            try:
-                ipaddress.ip_address(ip)
-            except ValueError:
-                logger.warning(f"Invalid IP address entered: {ip}")
-                # If the input is not a valid IP address, catch the exception and show a dialog
-                dlg = wx.MessageDialog(
-                    self,
-                    "This is not a valid IP address for the console. Please try again",
-                    constants.APPLICATION_NAME,
-                    wx.OK,
-                )
-                dlg.ShowModal()  # Shows it
-                dlg.Destroy()  # Destroy pop-up when finished.
-                # Put the focus back on the bad field
-                wx.CallAfter(self.console_ip_control.SetFocus)
-
-    def check_cue_list_player(self, _: wx.CommandEvent) -> None:
-        """Validates the Cue List Player index, and displays an alert dialog if it wasn't valid"""
-        cue_list_player_num = int(self.console_cue_list_player_control.GetValue())
-        if not validate_cue_list_player(cue_list_player_num):
-            logger.warning(f"Invalid Cue List Player index: {cue_list_player_num}")
-            dlg = wx.MessageDialog(
-                self,
-                "This is not a valid Cue List Player index. Please try again",
-                constants.APPLICATION_NAME,
-                wx.OK,
-            )
-            dlg.ShowModal()
-            dlg.Destroy()
-            wx.CallAfter(self.console_cue_list_player_control.SetFocus)
 
     def update_midi_ports(self, ports: list[str]) -> None:
         def update(self: PrefsPanel, ports: list[str]) -> None:

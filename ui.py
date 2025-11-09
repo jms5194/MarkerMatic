@@ -3,6 +3,7 @@ from typing import Optional
 
 import wx.lib.buttons
 import wx.svg
+from wx.core import Object, Window
 
 import constants
 import utilities
@@ -240,3 +241,88 @@ def get_icon_path(icon_name: str, state: str = "off") -> str:
             f"{icon_name}-{state}.svg",
         )
     )
+
+
+class WrongFieldTypeException(Exception):
+    pass
+
+
+class NamedValidator(wx.Validator):
+    def __init__(self, name: str) -> None:
+        """Validator that saves a human-readable name property for the field
+        it applies to"""
+        self.name = name
+        super().__init__()
+
+
+class CueListPlayerValidator(wx.Validator):
+    def Validate(self, _: Window) -> bool:
+        import app_settings
+
+        window = self.GetWindow()
+        if not isinstance(window, wx.TextEntry):
+            raise WrongFieldTypeException()
+        value = window.GetValue()
+        try:
+            if app_settings.validate_cue_list_player(int(value)):
+                return True
+        except ValueError:
+            pass
+        wx.MessageBox(
+            "The cue list player index is not valid. Please try again",
+            constants.APPLICATION_NAME,
+            wx.OK | wx.ICON_ERROR,
+        )
+        window.SetFocus()
+        return False
+
+    def Clone(self) -> Object:
+        return CueListPlayerValidator()
+
+
+class IPValidator(NamedValidator):
+    def Validate(self, _: Window) -> bool:
+        import app_settings
+
+        window = self.GetWindow()
+        if not isinstance(window, wx.TextEntry):
+            raise WrongFieldTypeException()
+        value = window.GetValue()
+        if app_settings.validate_ip_address(value):
+            return True
+        else:
+            wx.MessageBox(
+                f"The {self.name} IP address is not valid. Please try again",
+                constants.APPLICATION_NAME,
+                wx.OK | wx.ICON_ERROR,
+            )
+            window.SetFocus()
+            return False
+
+    def Clone(self) -> Object:
+        return IPValidator(self.name)
+
+
+class PortValidator(NamedValidator):
+    def Validate(self, _: Window) -> bool:
+        import app_settings
+
+        window = self.GetWindow()
+        if not isinstance(window, wx.TextEntry):
+            raise WrongFieldTypeException()
+        value = window.GetValue()
+        try:
+            if app_settings.validate_port_num(int(value)):
+                return True
+        except ValueError:
+            pass
+        wx.MessageBox(
+            f"The {self.name} port number is not valid. Please try again",
+            constants.APPLICATION_NAME,
+            wx.OK | wx.ICON_ERROR,
+        )
+        window.SetFocus()
+        return False
+
+    def Clone(self) -> Object:
+        return PortValidator(self.name)
