@@ -82,9 +82,13 @@ class Nadia(Console):
             logger.info("Subscribing to Meyer control points")
             # The unsubscribe all message currently throws an error in NADIA. Documented with Meyer as
             # Jira case NCP-582. Will be corrected in Cuestation 8.6.0 and the following line can be restored then
-            #self._client.send_message("/unsubscribeall", None)
-            self._client.send_message("/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue ID")
-            self._client.send_message("/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue Name")
+            # self._client.send_message("/unsubscribeall", None)
+            self._client.send_message(
+                "/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue ID"
+            )
+            self._client.send_message(
+                "/unsubscribe", f"CueListPlayer {self.selected_list} Active Cue Name"
+            )
             self._client.send_message("/log", "MarkerMatic is connected.")
             self._client.send_message(
                 "/log",

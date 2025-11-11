@@ -30,7 +30,12 @@ class DigitalPerformer(Daw):
         self.is_recording = False
         self.transport_state_validated = threading.Event()
         self.digitalperformer_osc_server = None
-        self.markers_to_ignore = ["Auto Record Start", "Memory Start", "Sequence Start", "Sequence End"]
+        self.markers_to_ignore = [
+            "Auto Record Start",
+            "Memory Start",
+            "Sequence Start",
+            "Sequence End",
+        ]
         self.digitalperformer_client = None
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
@@ -45,7 +50,9 @@ class DigitalPerformer(Daw):
     ) -> None:
         logger.info("Starting Digital Performer Connection threads")
         self._shutdown_server_event.clear()
-        start_managed_thread("daw_connection_thread", self._build_digitalperformer_osc_servers)
+        start_managed_thread(
+            "daw_connection_thread", self._build_digitalperformer_osc_servers
+        )
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
     def _daw_connection_monitor(self) -> None:
@@ -103,7 +110,9 @@ class DigitalPerformer(Daw):
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
             self._receive_digitalperformer_OSC()
             self._connected.set()
-            while (not self._shutdown_server_event.is_set()) and self._connected.is_set():
+            while (
+                not self._shutdown_server_event.is_set()
+            ) and self._connected.is_set():
                 try:
                     self._refresh_control_surfaces()
                     while not self._shutdown_server_event.is_set():
@@ -115,10 +124,18 @@ class DigitalPerformer(Daw):
 
     def _receive_digitalperformer_OSC(self) -> None:
         # Receives and distributes OSC from Digital Performer, based on matching OSC values
-        self.digitalperformer_client.dispatcher.map("/MarkersSelList/SelList_Ready", self._marker_matcher)
-        self.digitalperformer_client.dispatcher.map("/TransportState/Get", self._current_transport_state)
-        self.digitalperformer_client.dispatcher.map("/Get_Time", self._place_marker_at_time)
-        self.digitalperformer_client.dispatcher.set_default_handler(self._message_received)
+        self.digitalperformer_client.dispatcher.map(
+            "/MarkersSelList/SelList_Ready", self._marker_matcher
+        )
+        self.digitalperformer_client.dispatcher.map(
+            "/TransportState/Get", self._current_transport_state
+        )
+        self.digitalperformer_client.dispatcher.map(
+            "/Get_Time", self._place_marker_at_time
+        )
+        self.digitalperformer_client.dispatcher.set_default_handler(
+            self._message_received
+        )
 
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
@@ -129,6 +146,7 @@ class DigitalPerformer(Daw):
 
     def _marker_matcher(self, osc_address: str, *args) -> None:
         from app_settings import settings
+
         sel_list_cookie = int(args[0])
         marker_qty = int(args[2])
 
@@ -149,12 +167,14 @@ class DigitalPerformer(Daw):
                         logger.error(f"Unable to format string for name only match:{e}")
                 # DP will only build OSC markers that are 36 characters of text or shorter, so slice matching string
                 if test_name == self.name_to_match[:max_length]:
-                    self._goto_marker_by_id(sel_list_cookie, i-3)
+                    self._goto_marker_by_id(sel_list_cookie, i - 3)
                     break
 
         # Sel List must be deleted after use
         with self.digitalperformer_send_lock:
-            self.digitalperformer_client.send_message("/SelList_Delete", sel_list_cookie)
+            self.digitalperformer_client.send_message(
+                "/SelList_Delete", sel_list_cookie
+            )
 
     def _update_current_transport_state(self) -> None:
         with self.digitalperformer_send_lock:
@@ -201,7 +221,9 @@ class DigitalPerformer(Daw):
     def _goto_marker_by_id(self, list_cookie: int, marker_id: int) -> None:
         with self.digitalperformer_send_lock:
             # Selecting a marker in a SelList moves the playhead to that location
-            self.digitalperformer_client.send_message("/SelList_Set", [list_cookie, marker_id])
+            self.digitalperformer_client.send_message(
+                "/SelList_Set", [list_cookie, marker_id]
+            )
 
     def _place_marker_with_name(self, marker_name: str) -> None:
         with self.digitalperformer_send_lock:
@@ -218,7 +240,7 @@ class DigitalPerformer(Daw):
                     # Arg1 value 6 indicates we want to work in samples
                     msg.add_arg(6)
                     # Arg2 is the position, it must be sent as a double, not float
-                    msg.add_arg(cur_pos, arg_type='d')
+                    msg.add_arg(cur_pos, arg_type="d")
                     msg.add_arg(self.new_marker_name)
                     osc_message = msg.build()
                     self.digitalperformer_client.send(osc_message)
@@ -229,6 +251,7 @@ class DigitalPerformer(Daw):
     def get_marker_id_by_name(self, name: str) -> None:
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
+
         self.transport_state_validated.wait()
         if (not self.is_playing) or settings.allow_loading_while_playing:
             self.name_to_match = name
@@ -241,7 +264,9 @@ class DigitalPerformer(Daw):
                     logger.error(f"Unable to format incoming cue string{e}")
             with self.digitalperformer_send_lock:
                 # Request the list of all markers currently in project
-                self.digitalperformer_client.send_message("/MarkersSelList/Get_NewSelList", None)
+                self.digitalperformer_client.send_message(
+                    "/MarkersSelList/Get_NewSelList", None
+                )
 
     def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         try:
@@ -274,6 +299,7 @@ class DigitalPerformer(Daw):
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
+
         self._update_current_transport_state()
         self.transport_state_validated.clear()
         if (
@@ -281,9 +307,7 @@ class DigitalPerformer(Daw):
             and self.is_recording is True
         ):
             self._place_marker_with_name(cue)
-        elif (
-            settings.marker_mode is PlaybackState.PLAYBACK_TRACK
-        ):
+        elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 
     def _shutdown_servers(self) -> None:

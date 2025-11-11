@@ -11,7 +11,7 @@ import wx.lib.buttons
 import wx.svg
 import wx.svg._nanosvg
 from pubsub import pub
-from showinfm import show_in_file_manager # pyright: ignore[reportPrivateImportUsage]
+from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImportUsage]
 
 import constants
 import ui
