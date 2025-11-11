@@ -264,7 +264,7 @@ class CueListPlayerValidator(wx.Validator):
             raise WrongFieldTypeException()
         value = window.GetValue()
         try:
-            if app_settings.validate_cue_list_player(int(value)):
+            if app_settings.validate_cue_list_player(value):
                 return True
         except ValueError:
             pass
@@ -312,7 +312,7 @@ class PortValidator(NamedValidator):
             raise WrongFieldTypeException()
         value = window.GetValue()
         try:
-            if app_settings.validate_port_num(int(value)):
+            if app_settings.validate_port_num(value):
                 return True
         except ValueError:
             pass

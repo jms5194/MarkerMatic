@@ -336,19 +336,29 @@ class ThreadSafeSettings:
 settings = ThreadSafeSettings()
 
 
-def validate_cue_list_player(cue_list_player_num: int) -> bool:
+def validate_cue_list_player(cue_list_player: str | int) -> bool:
     """Validate that a Cue List Player's index is a valid human-readable/display value, between 1 and 127, inclusive"""
-    return 1 <= cue_list_player_num <= 127
+    if not isinstance(cue_list_player, int):
+        try:
+            cue_list_player = int(cue_list_player)
+        except ValueError:
+            return False
+    return 1 <= cue_list_player <= 127
 
 
 def validate_ip_address(ip_address: str) -> bool:
     """Validate that the provided string is a valid IP address"""
     try:
-        ipaddress.ip_address(ip_address)
+        ipaddress.ip_address(ip_address.strip())
         return True
     except ValueError:
         return False
 
 
-def validate_port_num(port_num: int) -> bool:
+def validate_port_num(port_num: str | int) -> bool:
+    if not isinstance(port_num, int):
+        try:
+            port_num = int(port_num)
+        except ValueError:
+            return False
     return 1 <= port_num <= 65535
