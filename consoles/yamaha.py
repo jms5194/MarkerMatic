@@ -73,7 +73,6 @@ class Yamaha(Console):
                 self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
                     line = buff.get_line()
-                    print(line)
                     if line is None:
                         logger.error(f"{self.type} connection reset")
                         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
