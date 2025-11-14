@@ -73,6 +73,7 @@ class Yamaha(Console):
                 self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
                     line = buff.get_line()
+                    print(line)
                     if line is None:
                         logger.error(f"{self.type} connection reset")
                         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
@@ -88,12 +89,32 @@ class Yamaha(Console):
                         self._client_socket.sendall(
                             str.encode(request_scene_info_command)
                         )
+                    elif line.startswith("NOTIFY sscurrent_ex scene_a"):
+                        # Separate command that is used on DM7
+                        scene_internal_id = line.rsplit(maxsplit=1)[1]
+                        logger.info(
+                            f"{self.type} internal scene {scene_internal_id} recalled"
+                        )
+                        request_scene_info_command = (
+                            f"ssinfo_ex scene_a {scene_internal_id}\n"
+                        )
+                        self._client_socket.sendall(
+                            str.encode(request_scene_info_command)
+                        )
                     elif line.startswith("OK ssinfo_ex MIXER:Lib/Scene"):
                         quote_split_line = line.split('"')
                         scene_number = quote_split_line[1]
                         scene_name = quote_split_line[3]
                         cue_payload = scene_number + " " + scene_name
                         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+                    elif line.startswith("OK ssinfo_ex scene_a"):
+                        # Separate parsing for DM7
+                        quote_split_line = line.split('"')
+                        scene_number = quote_split_line[1]
+                        scene_name = quote_split_line[3]
+                        cue_payload = scene_number + " " + scene_name
+                        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+
         logger.info(f"Closing connection to {self.type}")
 
     def heartbeat(self) -> None:
