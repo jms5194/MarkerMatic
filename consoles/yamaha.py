@@ -13,6 +13,7 @@ from . import Console, Feature
 
 DELIMITER = b"\n"
 BUFFER_SIZE = 4096
+SCENE_TYPES = ("MIXER:Lib/Scene", "scene_a")
 
 
 class Buffer(object):
@@ -77,44 +78,55 @@ class Yamaha(Console):
                         logger.error(f"{self.type} connection reset")
                         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
                         break
-                    if line.startswith("NOTIFY sscurrent_ex MIXER:Lib/Scene"):
-                        scene_internal_id = line.rsplit(maxsplit=1)[1]
-                        logger.info(
-                            f"{self.type} internal scene {scene_internal_id} recalled"
-                        )
-                        request_scene_info_command = (
-                            f"ssinfo_ex MIXER:Lib/Scene {scene_internal_id}\n"
-                        )
-                        self._client_socket.sendall(
-                            str.encode(request_scene_info_command)
-                        )
-                    elif line.startswith("NOTIFY sscurrent_ex scene_a"):
-                        # Separate command that is used on DM7
-                        scene_internal_id = line.rsplit(maxsplit=1)[1]
-                        logger.info(
-                            f"{self.type} internal scene {scene_internal_id} recalled"
-                        )
-                        request_scene_info_command = (
-                            f"ssinfo_ex scene_a {scene_internal_id}\n"
-                        )
-                        self._client_socket.sendall(
-                            str.encode(request_scene_info_command)
-                        )
-                    elif line.startswith("OK ssinfo_ex MIXER:Lib/Scene"):
-                        quote_split_line = line.split('"')
-                        scene_number = quote_split_line[1]
-                        scene_name = quote_split_line[3]
-                        cue_payload = scene_number + " " + scene_name
-                        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
-                    elif line.startswith("OK ssinfo_ex scene_a"):
-                        # Separate parsing for DM7
-                        quote_split_line = line.split('"')
-                        scene_number = quote_split_line[1]
-                        scene_name = quote_split_line[3]
-                        cue_payload = scene_number + " " + scene_name
-                        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+                    # Check the line for matches against known message types
+                    if self._match_internal_scene_recall(line):
+                        pass
+                    elif self._match_scene_info(line):
+                        pass
 
         logger.info(f"Closing connection to {self.type}")
+
+    def _match_internal_scene_recall(
+        self,
+        line: str,
+    ) -> bool:
+        """Checks to see if the line matches an internal scene recall for a
+        supported scene type, and requests the scene's info if it does.
+
+        Returns True if matched, False otherwise."""
+        for scene_type in SCENE_TYPES:
+            if line.startswith(f"NOTIFY sscurrent_ex {scene_type}"):
+                internal_id = line.rsplit(maxsplit=1)[1]
+                logger.info(
+                    f"{self.type} internal {scene_type} scene {internal_id} recalled"
+                )
+                self._request_scene_info(scene_type, internal_id)
+                return True
+        return False
+
+    def _request_scene_info(self, scene_type: str, internal_id: str) -> None:
+        """Sends a request for a scene's info, using a scene type/cue list, and
+        the scene's internal ID"""
+        request_scene_info_command = f"ssinfo_ex {scene_type} {internal_id}\n"
+        self._client_socket.sendall(str.encode(request_scene_info_command))
+
+    def _match_scene_info(
+        self,
+        line: str,
+    ) -> bool:
+        """Checks to see if the line matches a response for a scene's info, and
+        sends a cue load message if it does.
+
+        Returns True if matched, False otherwise."""
+        for scene_type in SCENE_TYPES:
+            if line.startswith(f"OK ssinfo_ex {scene_type}"):
+                quote_split_line = line.split('"')
+                scene_number = quote_split_line[1]
+                scene_name = quote_split_line[3]
+                cue_payload = f"{scene_number} {scene_name}"
+                pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+                return True
+        return False
 
     def heartbeat(self) -> None:
         if hasattr(self, "_client_socket") and self._connection_established.is_set():
