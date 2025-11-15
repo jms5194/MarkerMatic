@@ -33,6 +33,7 @@ class ThreadSafeSettings:
             "external_control_midi_port": constants.MIDI_PORT_NONE,
             "allow_loading_while_playing": False,
             "cue_list_player": 1,
+            "automatic_mode_toggle" : True
         }
 
     @property
@@ -259,6 +260,16 @@ class ThreadSafeSettings:
                 raise ValueError("Invalid ControlPointAddress for CueListPlayer")
             self._settings["cue_list_player"] = cue_list_player_num
 
+    @property
+    def automatic_mode_toggle(self) -> bool:
+        with self._lock:
+            return self._settings["automatic_mode_toggle"]
+
+    @automatic_mode_toggle.setter
+    def automatic_mode_toggle(self, value: bool):
+        with self._lock:
+            self._settings["automatic_mode_toggle"] = value
+
     def update_from_config_file(self, path: str) -> None:
         """Updates the currently loaded settings from the contents of the config file"""
         logger.info("Loading settings from config file")
@@ -302,6 +313,7 @@ class ThreadSafeSettings:
                 "always_on_top": "always_on_top",
                 "mmc_control_enabled": "mmc_control_enabled",
                 "allow_loading_while_playing": "allow_loading_while_playing",
+                "automatic_mode_toggle": "automatic_mode_toggle"
             }
             for settings_name, config_name in boolean_properties.items():
                 self._settings[settings_name] = config.getboolean(

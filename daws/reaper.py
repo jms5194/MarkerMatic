@@ -179,6 +179,17 @@ class Reaper(Daw):
         elif recording is False:
             self.is_recording = False
             logger.info("Reaper is not recording")
+        self.update_transport_state()
+
+    def update_transport_state(self) -> None:
+        from app_settings import settings
+        if settings.automatic_mode_toggle:
+            if self.is_playing and self.is_recording:
+                pub.sendMessage(PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode= PlaybackState.RECORDING)
+            elif self.is_playing:
+                pub.sendMessage(PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode= PlaybackState.PLAYBACK_TRACK)
+            else:
+                pub.sendMessage(PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode= PlaybackState.PLAYBACK_TRACK)
 
     def _refresh_control_surfaces(self) -> None:
         with self.reaper_send_lock:
