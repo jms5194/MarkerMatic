@@ -45,13 +45,11 @@ jobs:
           - os: macos-x86
             setup-python-arch: x64
             arch: x86_64
-            runs-on: macos-13
           - os: macos-arm64
             setup-python-arch: arm64
             arch: arm64
-            runs-on: macos-latest # macos-latest is ARM for macOS >= 14
-            
-    runs-on: ${{ matrix.runs-on }}
+    # macos-latest is ARM for macOS >= 14
+    runs-on: macos-latest
 
     steps:
       # Checkout the project from Github
@@ -170,6 +168,10 @@ jobs:
             fi
             i=$((i+1))
           done
+
+      - name: Sign DMG
+        run: |
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --force "MarkerMatic Installer"-${{ matrix.os }}.dmg
 
       # Add the built binaries to the release
       - name: Release
