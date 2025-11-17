@@ -14,8 +14,7 @@ pyinstaller==6.16.0
 pyinstaller-hooks-contrib==2025.9
 pyinstaller_versionfile==3.0.1
 PyYAML==6.0.3
-# Keep this version of setuptools, needed for py2app currently
-setuptools==70.3.0
+setuptools==80.9.0
 toml==0.10.2
 tomli==2.3.0
 wcwidth==0.2.14

@@ -23,11 +23,13 @@ class Updater:
                 import objc
 
                 path = os.path.join(
-                    py2app_resource_path, "..", "Frameworks", "Sparkle.Framework"
+                    py2app_resource_path, "..", "Frameworks", "Sparkle.framework"
                 )
-                sparkle_path = objc.pathForFramework(path)
+                sparkle_path = objc.pathForFramework(str(path))
                 objc.loadBundle("Sparkle", globals(), bundle_path=sparkle_path)  # pyright: ignore[reportAttributeAccessIssue]
-                self._updater = SUUpdater.sharedUpdater()  # type: ignore # noqa: F821
+                self._updater = SPUStandardUpdaterController.alloc().initWithStartingUpdater_updaterDelegate_userDriverDelegate_(  # noqa: F821 # type: ignore
+                    True, None, None
+                )
                 del objc
                 self.updater_is_loaded = True
         except Exception as e:
@@ -38,7 +40,7 @@ class Updater:
     def check_for_updates(self) -> None:
         try:
             if hasattr(self, "_updater"):
-                self._updater.checkForUpdates_(None)
+                self._updater.updater().checkForUpdates()
         except Exception as e:
             logger_config.logger.error(f"Could not check for updates, {e}")
 

@@ -5,6 +5,7 @@ Usage:
     python setup.py py2app
 """
 
+import platform
 import sys
 from pathlib import Path
 
@@ -21,6 +22,11 @@ Path.touch(google_folder / "_upb" / "__init__.py")
 
 APP = ["main.py"]
 DATA_FILES = []
+
+su_feed_url = constants.SPARKLE_MAC_X64_URL
+if platform.machine() == "arm64":
+    su_feed_url = constants.SPARKLE_MAC_ARM64_URL
+
 OPTIONS = {
     "argv_emulation": False,
     "iconfile": f"resources/{constants.ICON_MAC_FILENAME}",
@@ -29,7 +35,7 @@ OPTIONS = {
         f"resources/{constants.ICON_WIN_FILENAME}",
         "resources/MarkerMatic-Bridge.bwextension",
     ],
-    "excludes": ["pyinstaller", "pyinstaller-hooks-contrib"],
+    "excludes": ["pyinstaller", "pyinstaller-hooks-contrib", "setuptools"],
     "frameworks": ["resources/Sparkle/Sparkle.framework"],
     "dylib_excludes": [
         f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/Frameworks/Tcl.framework",
@@ -46,7 +52,7 @@ OPTIONS = {
         "NSDocumentsFolderUsageDescription": f"{constants.APPLICATION_NAME} needs to install a Bitwig Studio extension to connect",
         "NSLocalNetworkUsageDescription": f"{constants.APPLICATION_NAME} communicates with your console to detect cue loads",
         "NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac": True,
-        "SUFeedURL": constants.SPARKLE_MAC_URL,
+        "SUFeedURL": su_feed_url,
         "SUPublicEDKey": constants.SPARKLE_PUBLIC_ED_KEY,
     },
     "packages": ["google.protobuf", "google._upb", "zeroconf"],
