@@ -161,9 +161,8 @@ jobs:
           xcrun stapler staple "MarkerMatic Installer-${{ matrix.os }}.dmg"
 
       - name: Verify notarization
-        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
         run: |
-          spctl -a -v "MarkerMatic Installer-${{ matrix.os }}.dmg"
+          spctl -a -t open --context context:primary-signature "MarkerMatic Installer-${{ matrix.os }}.dmg"
 
       # Add the built binaries to the release
       - name: Release
