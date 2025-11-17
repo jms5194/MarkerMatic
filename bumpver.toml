@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "v4.3.0+1016"
+current_version = "v4.3.0+1017"
 version_pattern = "vMAJOR.MINOR.PATCH+BUILD"
 commit_message = "Bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
