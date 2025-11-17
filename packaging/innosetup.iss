@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "MarkerMatic"
-#define MyAppVersion "4.3.0 (Build 1015)"
+#define MyAppVersion "4.3.0 (Build 1016)"
 #define MyAppPublisher "Justin Stasiw"
 #define MyAppURL "https://markermatic.com"
 #define MyAppExeName "MarkerMatic.exe"
@@ -19,7 +19,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-VersionInfoProductVersion=4.3.0.1015
+VersionInfoProductVersion=4.3.0.1016
 DefaultDirName={autopf}\{#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
