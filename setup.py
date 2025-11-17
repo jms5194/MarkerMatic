@@ -30,6 +30,7 @@ OPTIONS = {
         "resources/MarkerMatic-Bridge.bwextension",
     ],
     "excludes": ["pyinstaller", "pyinstaller-hooks-contrib"],
+    "frameworks": ["resources/Sparkle/Sparkle.framework"],
     "dylib_excludes": [
         f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/Frameworks/Tcl.framework",
         f"/Library/Frameworks/Python.framework/Versions/{sys.version_info.major}.{sys.version_info.minor}/Frameworks/Tk.framework",
@@ -39,12 +40,14 @@ OPTIONS = {
         "CFBundleName": constants.APPLICATION_NAME,
         "CFBundleDisplayName": constants.APPLICATION_NAME,
         "NSHumanReadableCopyright": constants.APPLICATION_COPYRIGHT,
-        "CFBundleShortVersionString": constants.VERSION,
+        "CFBundleShortVersionString": constants.VERSION_SHORT,
         "CFBundleVersion": constants.VERSION_EXTRA,
         "NSRequiresAquaSystemAppearance": False,
         "NSDocumentsFolderUsageDescription": f"{constants.APPLICATION_NAME} needs to install a Bitwig Studio extension to connect",
         "NSLocalNetworkUsageDescription": f"{constants.APPLICATION_NAME} communicates with your console to detect cue loads",
         "NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac": True,
+        "SUFeedURL": constants.SPARKLE_MAC_URL,
+        "SUPublicEDKey": constants.SPARKLE_PUBLIC_ED_KEY,
     },
     "packages": ["google.protobuf", "google._upb", "zeroconf"],
 }

@@ -98,6 +98,10 @@ jobs:
         run: |
           security find-identity -v -p codesigning
 
+      - name: Download Sparkle framework
+        run: |
+          rm -rf ./resources/Sparkle && mkdir ./resources/Sparkle && curl -L "https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz" | tar -xf - -C ./resources/Sparkle
+
       # Build app with Pyinstaller on Mac
       - name: Build with Py2App (MacOS)
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'

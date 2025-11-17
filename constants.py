@@ -15,6 +15,7 @@ ICON_WIN_FILENAME = "markermaticicon.ico"
 LOG_FILENAME = "MarkerMatic.log"
 VERSION = "4.2.1 (Build 1013)"
 VERSION_EXTRA = "4.2.1.1013"
+VERSION_SHORT = "4.2.1"
 WEBSITE = "https://markermatic.com"
 WEBSITE_DOCUMENTATION = "https://markermatic.com/docs"
 WEBSITE_LICENSE = "https://markermatic.com/license"
@@ -44,6 +45,11 @@ MIDI_PORT_NONE = "None"
 PORT_STUDER_EMBER_RECEIVE = 49104
 
 WXPYTHON_USE_NATIVE_BUTTONS = False
+
+SPARKLE_BASE_URL = "https://markermatic.com/updates"
+SPARKLE_MAC_URL = f"{SPARKLE_BASE_URL}/macos-appcast.xml"
+
+SPARKLE_PUBLIC_ED_KEY = "Y6lCSD9GlDM0vOV2ZVVhNE1P9C4WDOPQeM0qzhuIRew="
 
 
 class PlaybackState(StrEnum):

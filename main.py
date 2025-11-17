@@ -15,6 +15,7 @@ from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImport
 
 import constants
 import ui
+import updates
 import utilities
 from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
@@ -51,6 +52,8 @@ class MainWindow(wx.Frame):
 
         self.SetIcons(self.get_app_icons())
 
+        self.updater = updates.Updater()
+
         menu_bar = wx.MenuBar()
         if platform.system() == "Darwin":
             main_menu = menu_bar.OSXGetAppleMenu()
@@ -59,8 +62,10 @@ class MainWindow(wx.Frame):
             main_menu = wx.Menu()
         preferences_menuitem = main_menu.Prepend(wx.ID_PREFERENCES)
         if platform.system() == "Darwin":
-            main_menu.PrependSeparator()
             about_menuitem = main_menu.Prepend(wx.ID_ABOUT)
+            if self.updater.updater_is_loaded:
+                updates_menuitem = main_menu.Insert(3, wx.ID_ANY, "&Check for Updates…")
+            main_menu.PrependSeparator()
         else:
             main_menu.AppendSeparator()
             menu_exit = main_menu.Append(wx.ID_EXIT)
@@ -80,6 +85,7 @@ class MainWindow(wx.Frame):
 
         # Main Window Bindings
         self.Bind(wx.EVT_MENU, self.on_about, about_menuitem)
+        self.Bind(wx.EVT_MENU, self.on_check_for_updates, updates_menuitem)
         self.Bind(wx.EVT_MENU, self.on_documentation, documentation_menuitem)
         self.Bind(wx.EVT_MENU, self.on_license, license_menuitem)
         self.Bind(wx.EVT_MENU, self.on_preferences, preferences_menuitem)
@@ -101,6 +107,10 @@ class MainWindow(wx.Frame):
         info.SetVersion(constants.VERSION)
         info.SetCopyright(constants.APPLICATION_COPYRIGHT)
         wx.adv.AboutBox(info, self)
+
+    def on_check_for_updates(self, _) -> None:
+        """Asks the updater to check for updates"""
+        self.updater.check_for_updates()
 
     def on_documentation(self, _) -> None:
         """Launch the documentation page in the user's web browser"""

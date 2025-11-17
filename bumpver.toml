@@ -13,7 +13,7 @@ push = true
     'APPLICATION_COPYRIGHT = "© YYYY',
     'VERSION = "MAJOR.MINOR.PATCH (Build BUILD)"',
     'VERSION_EXTRA = "MAJOR.MINOR.PATCH.BUILD"',
-
+    'VERSION_SHORT = "MAJOR.MINOR.PATCH"',
 ]
 "packaging/innosetup.iss" = [
     '#define MyAppVersion "MAJOR.MINOR.PATCH (Build BUILD)"',
