@@ -53,6 +53,7 @@ class MainWindow(wx.Frame):
         self.SetIcons(self.get_app_icons())
 
         self.updater = updates.Updater()
+        updates_menuitem = None
 
         menu_bar = wx.MenuBar()
         if platform.system() == "Darwin":
@@ -85,7 +86,8 @@ class MainWindow(wx.Frame):
 
         # Main Window Bindings
         self.Bind(wx.EVT_MENU, self.on_about, about_menuitem)
-        self.Bind(wx.EVT_MENU, self.on_check_for_updates, updates_menuitem)
+        if updates_menuitem:
+            self.Bind(wx.EVT_MENU, self.on_check_for_updates, updates_menuitem)
         self.Bind(wx.EVT_MENU, self.on_documentation, documentation_menuitem)
         self.Bind(wx.EVT_MENU, self.on_license, license_menuitem)
         self.Bind(wx.EVT_MENU, self.on_preferences, preferences_menuitem)
