@@ -96,19 +96,18 @@ jobs:
         run: |
           security find-identity -v -p codesigning
 
-      - name: Download Sparkle framework
+      - name: Download Sparkle automatic update framework
         run: |
           rm -rf ./resources/Sparkle && mkdir ./resources/Sparkle && curl -L "https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz" | tar -xf - -C ./resources/Sparkle
 
-      # Build app with Pyinstaller on Mac
-      - name: Build with Py2App (MacOS)
+      - name: Build with py2app
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           arch -${{ matrix.arch }} python setup.py py2app --arch ${{ matrix.arch }}
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
 
-      - name: Codesign Application for Notarization
+      - name: Sign application
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           cd dist
@@ -123,29 +122,9 @@ jobs:
           done;
           codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "MarkerMatic.app" 
           codesign --verify --verbose=4 "MarkerMatic.app"
-      - name: Zip Application for Notarization
-        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
-        run: |
-          ditto -c -k --keepParent "dist/MarkerMatic.app" "MarkerMatic.zip"
-      # Send the application zip to Apple for Notarization and stapling
-      - name: Notarize and Staple
-        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
-        run: |
-          xcrun notarytool submit "MarkerMatic.zip" --apple-id \
-            "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
-            "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
-            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
-          chmod 755 "dist/MarkerMatic.app"
-          xcrun stapler staple "dist/MarkerMatic.app"
+          chmod 755 MarkerMatic.app
 
-      - name: Verify Notarization
-        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
-        run: |
-          spctl -a -v "dist/MarkerMatic.app"
-          rm "MarkerMatic.zip"
-      # Build an installer DMG for MacOS
-      - name: Create dmg MacOS
-        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+      - name: Create DMG
         run: |
           chmod a+x "dist/MarkerMatic.app"
           brew update
@@ -171,7 +150,20 @@ jobs:
 
       - name: Sign DMG
         run: |
-          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --force "MarkerMatic Installer"-${{ matrix.os }}.dmg
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" -i com.justinstasiw.markermatic.dmg --timestamp --force "MarkerMatic Installer"-${{ matrix.os }}.dmg
+
+      - name: Notarize and staple
+        run: |
+          xcrun notarytool submit "MarkerMatic Installer-${{ matrix.os }}.dmg" --apple-id \
+            "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
+            "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
+            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
+          xcrun stapler staple "MarkerMatic Installer-${{ matrix.os }}.dmg"
+
+      - name: Verify notarization
+        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
+        run: |
+          spctl -a -v "MarkerMatic Installer-${{ matrix.os }}.dmg"
 
       # Add the built binaries to the release
       - name: Release
