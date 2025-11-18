@@ -4,8 +4,6 @@ from configparser import ConfigParser
 from logging import Logger
 
 import constants
-from consoles import DiGiCo
-from daws import Reaper
 from logger_config import logger
 
 
@@ -25,8 +23,8 @@ class ThreadSafeSettings:
             "marker_mode": constants.PlaybackState.PLAYBACK_TRACK,
             "window_loc": (400, 222),
             "name_only_match": False,
-            "console_type": DiGiCo.type,
-            "daw_type": Reaper.type,
+            "console_type": "Digico",
+            "daw_type": "Reaper",
             "always_on_top": False,
             "mmc_control_enabled": False,
             "external_control_osc_port": 49103,

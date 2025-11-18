@@ -229,13 +229,15 @@ class DawConsoleBridge:
 
     def stop_all_threads(self):
         logger.info("Stopping all threads")
-        for thread in self._threads:
+        # Take a snapshot of the current threads so we don't modify the list
+        # while iterating over it.
+        threads = list(self._threads)
+        for thread in threads:
             thread.join(timeout=constants.THREAD_JOIN_TIMEOUT)
-            # Only remove threads that managed to shut down
-            if not thread.is_alive():
-                self._threads.remove(thread)
-            else:
-                logger.warning(f"Thread {thread} didn't stop in time")
+        # Only keep threads that are still alive
+        self._threads = [t for t in self._threads if t.is_alive()]
+        for thread in self._threads:
+            logger.warning(f"Thread {thread} didn't stop in time")
 
     def close_servers(self):
         logger.info("Closing OSC servers...")
