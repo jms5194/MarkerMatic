@@ -38,6 +38,11 @@ class Updater:
                     self.has_updater_for_platform = True
                     import pywinsparkle
 
+                    pywinsparkle.win_sparkle_set_app_details(
+                        constants.APPLICATION_AUTHOR,
+                        constants.APPLICATION_NAME,
+                        constants.VERSION_SHORT,
+                    )
                     pywinsparkle.win_sparkle_set_appcast_url(
                         constants.SPARKLE_WIN_X64_URL
                     )
