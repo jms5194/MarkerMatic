@@ -49,6 +49,7 @@ WXPYTHON_USE_NATIVE_BUTTONS = False
 SPARKLE_BASE_URL = "https://markermatic.com/updates"
 SPARKLE_MAC_ARM64_URL = f"{SPARKLE_BASE_URL}/macos-arm64-appcast.xml"
 SPARKLE_MAC_X64_URL = f"{SPARKLE_BASE_URL}/macos-x64-appcast.xml"
+SPARKLE_WIN_X64_URL = f"{SPARKLE_BASE_URL}/win-x64-appcast.xml"
 
 SPARKLE_PUBLIC_ED_KEY = "Y6lCSD9GlDM0vOV2ZVVhNE1P9C4WDOPQeM0qzhuIRew="
 

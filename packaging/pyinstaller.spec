@@ -3,6 +3,8 @@ import argparse
 import os
 import sys
 
+import pywinsparkle
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(SPEC), "..")))
 
 import constants
@@ -25,13 +27,19 @@ datas = [
 ws_hiddenimports = ["websockets", "websockets.legacy"]
 py4j_hiddenimports = ["py4j.java_collections"]
 win32com_imports = ["win32com.shell.shell", "win32com.shell.shellcon"]
+pywinsparkle_imports = ["pywinsparkle", "pywinsparkle.libs"]
+
+pywinsparkle_binaries = (f"{pywinsparkle.pywinsparkle.DLL_FILE}.dll", ".")
 
 a = Analysis(
     ["../main.py"],
     pathex=[],
-    binaries=[],
+    binaries=[pywinsparkle_binaries],
     datas=datas,
-    hiddenimports=ws_hiddenimports + py4j_hiddenimports + win32com_imports,
+    hiddenimports=ws_hiddenimports
+    + py4j_hiddenimports
+    + win32com_imports
+    + pywinsparkle_imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

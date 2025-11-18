@@ -53,6 +53,7 @@ class MainWindow(wx.Frame):
         self.SetIcons(self.get_app_icons())
 
         self.updater = updates.Updater()
+        self.updater.register_request_stop_callback(self.on_close_for_update)
         updates_menuitem = None
 
         menu_bar = wx.MenuBar()
@@ -73,13 +74,16 @@ class MainWindow(wx.Frame):
             self.Bind(wx.EVT_MENU, self.on_close, menu_exit)
             menu_bar.Append(main_menu, "&File")
         help_menu = wx.Menu()
-        if platform.system() != "Darwin":
-            about_menuitem = help_menu.Prepend(wx.ID_ABOUT)
-            help_menu.AppendSeparator()
         documentation_menuitem = help_menu.Append(wx.ID_ANY, "&Documentation")
         show_log_menuitem = help_menu.Append(wx.ID_ANY, "&Show Log")
         help_menu.AppendSeparator()
         license_menuitem = help_menu.Append(wx.ID_ANY, "&License && Thanks")
+        if platform.system() != "Darwin":
+            help_menu.AppendSeparator()
+            if self.updater.updater_is_loaded:
+                updates_menuitem = help_menu.Append(wx.ID_ANY, "&Check for Updates…")
+                help_menu.AppendSeparator()
+            about_menuitem = help_menu.Append(wx.ID_ABOUT)
         menu_bar.Append(help_menu, "&Help")
 
         self.SetMenuBar(menu_bar)
@@ -138,6 +142,7 @@ class MainWindow(wx.Frame):
                 title=f"{constants.APPLICATION_NAME} Preferences",
                 console=self.BridgeFunctions.console,
                 icons=self.get_app_icons(),
+                updater=self.updater,
             )
 
     def on_show_log(self, _) -> None:
@@ -164,6 +169,17 @@ class MainWindow(wx.Frame):
                 if isinstance(event, wx.CloseEvent):
                     event.Veto()
                 return
+        self.updater.stop()
+        self.finish_app_close()
+
+    def on_close_for_update(self, *_) -> None:
+        """Trigger a shutdown of the application, when requested by the
+        updater"""
+        logger.info("Requested to close for an update")
+        self.finish_app_close()
+
+    def finish_app_close(self) -> None:
+        """Finish the shutdown procedures, and close the application GUI"""
         closed_complete = self.BridgeFunctions.close_servers()
         if closed_complete:
             try:
@@ -453,7 +469,14 @@ def attempt_reconnect(_: wx.Event):
 
 class PrefsWindow(wx.Frame):
     # This is our preferences window pane
-    def __init__(self, title, parent, console: Console, icons: wx.IconBundle):
+    def __init__(
+        self,
+        title,
+        parent,
+        console: Console,
+        icons: wx.IconBundle,
+        updater: updates.Updater,
+    ):
         logger.info("Creating PrefsWindow")
         wx.Frame.__init__(
             self,
@@ -461,18 +484,19 @@ class PrefsWindow(wx.Frame):
             title=title,
             style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX),
         )
-        PrefsPanel(self, console=console)
+        PrefsPanel(self, console=console, updater=updater)
         self.Fit()
-        if self.GetSize().Width < 350:
-            self.SetSize(width=350, height=-1)
+        if self.GetSize().Width < 360:
+            self.SetSize(width=360, height=-1)
         self.SetIcons(icons)
         self.Show()
 
 
 class PrefsPanel(wx.Panel):
-    def __init__(self, parent, console: Console):
+    def __init__(self, parent, console: Console, updater: updates.Updater):
         logger.info("Creating PrefsPanel")
         wx.Panel.__init__(self, parent)
+        self.updater = updater
         # Define Fonts:
         self.ip_inspected = False
         panel_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -727,6 +751,28 @@ class PrefsPanel(wx.Panel):
         self.always_on_top_checkbox = wx.CheckBox(self, label="Always display on top")
         self.always_on_top_checkbox.SetValue(settings.always_on_top)
         app_settings_section.Add(self.always_on_top_checkbox, flag=wx.EXPAND)
+        if self.updater.updater_is_loaded:
+            # Automatically check for updates
+            app_settings_section.AddStretchSpacer()
+            self.automatically_check_checkbox = wx.CheckBox(
+                self, label="Automatically check for updates"
+            )
+            self.automatically_check_checkbox.SetValue(
+                self.updater.automatically_checks_for_updates
+            )
+            app_settings_section.Add(self.automatically_check_checkbox, flag=wx.EXPAND)
+            # Automatically download updates
+            if self.updater.supports_auto_downloads:
+                app_settings_section.AddStretchSpacer()
+                self.automatically_download_checkbox = wx.CheckBox(
+                    self, label="Automatically download updates"
+                )
+                self.automatically_download_checkbox.SetValue(
+                    self.updater.automatically_downloads_updates
+                )
+                app_settings_section.Add(
+                    self.automatically_download_checkbox, flag=wx.EXPAND
+                )
         # Only match cue name
         app_settings_section.AddStretchSpacer()
         self.match_mode_label_only = wx.CheckBox(self, label="Only match cue name")
@@ -958,6 +1004,15 @@ class PrefsPanel(wx.Panel):
         except Exception as e:
             logger.error(f"Error updating configuration: {e}")
         pub.sendMessage(PyPubSubTopics.UPDATE_MAIN_WINDOW_DISPLAY_SETTINGS)
+        # Update the updater settings, which it stores by itself
+        if self.updater.updater_is_loaded:
+            self.updater.automatically_checks_for_updates = (
+                self.automatically_check_checkbox.GetValue()
+            )
+            if self.updater.supports_auto_downloads:
+                self.updater.automatically_downloads_updates = (
+                    self.automatically_download_checkbox.GetValue()
+                )
 
     def changed_console_ip(self, e):
         # Flag to know if the console IP has been modified in the prefs window
