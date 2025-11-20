@@ -57,7 +57,7 @@ def _handle_transport_change(_address: str, action: list[TransportAction], *_) -
     pub.sendMessage(PyPubSubTopics.TRANSPORT_ACTION, transport_action=action[0])
 
 
-def _handle_marker(_: str, marker_name: Optional[str]) -> None:
+def _handle_marker(_: str, marker_name=None) -> None:
     if marker_name:
         pub.sendMessage(PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name=marker_name)
     else:
