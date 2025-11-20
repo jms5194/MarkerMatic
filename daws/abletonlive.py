@@ -46,7 +46,7 @@ class Ableton(Daw):
         start_managed_thread("daw_connection_thread", self._build_ableton_osc_servers)
         start_managed_thread("daw_connection_monitor", self._daw_connection_monitor)
 
-    def _daw_connection_monitor(self):
+    def _daw_connection_monitor(self) -> None:
         while not self._shutdown_server_event.is_set():
             time.sleep(1)
             with self._connection_check_lock:
@@ -63,11 +63,11 @@ class Ableton(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-    def _refresh_control_surfaces(self):
+    def _refresh_control_surfaces(self) -> None:
         with self.ableton_send_lock:
             self.ableton_client.send_message("/live/application/get/version", None)
 
-    def _build_ableton_osc_servers(self):
+    def _build_ableton_osc_servers(self) -> None:
         # Connect to Ableton via OSC
 
         logger.info("Starting Ableton OSC server")
@@ -86,7 +86,7 @@ class Ableton(Daw):
         except Exception as e:
             logger.error(f"Ableton OSC server startup error: {e}")
 
-    def _receive_ableton_OSC(self):
+    def _receive_ableton_OSC(self) -> None:
         # Receives and distributes OSC from Reaper, based on matching OSC values
         self.ableton_dispatcher.map("/live/song/get/cue_points", self._marker_matcher)
         self.ableton_dispatcher.map("/live/song/get/is_playing", self._current_transport_state)
@@ -100,7 +100,7 @@ class Ableton(Daw):
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
-    def _marker_matcher(self, osc_address, *args):
+    def _marker_matcher(self, osc_address: str, *args):
         from app_settings import settings
         self._message_received()
         # If name flag is set, we're labeling a new marker instead of matching an existing one.
@@ -123,7 +123,7 @@ class Ableton(Daw):
                     self._goto_marker_by_name(marker)
                     break
 
-    def _current_transport_state(self, osc_address, val):
+    def _current_transport_state(self, osc_address: str, val):
         self._message_received()
         # Watches what the Ableton playhead is doing.
         playing = None
@@ -198,16 +198,15 @@ class Ableton(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _ableton_play(self):
+    def _ableton_play(self) -> None:
         with self.ableton_send_lock:
             self.ableton_client.send_message("/live/song/start_playing", None)
 
-    def _ableton_stop(self):
+    def _ableton_stop(self) -> None:
         with self.ableton_send_lock:
             self.ableton_client.send_message("/live/song/stop_playing", None)
 
-    def _ableton_rec(self):
-        # Sends action to skip to end of project and then record, to prevent overwrites
+    def _ableton_rec(self) -> None:
         from app_settings import settings
 
         settings.marker_mode = PlaybackState.RECORDING
@@ -237,7 +236,7 @@ class Ableton(Daw):
         ):
             self._goto_marker_by_name(cue)
 
-    def _shutdown_servers(self):
+    def _shutdown_servers(self) -> None:
         try:
             if self.ableton_osc_server:
                 self.ableton_osc_server.shutdown()
