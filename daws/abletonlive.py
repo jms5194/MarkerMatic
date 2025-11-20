@@ -13,7 +13,7 @@ from . import Daw, configure_ableton
 
 
 class Ableton(Daw):
-    type = "AbletonLive"
+    type = "Ableton Live"
     _shutdown_server_event = threading.Event()
     _connected = threading.Event()
     _connection_check_lock = threading.Lock()
@@ -26,6 +26,10 @@ class Ableton(Daw):
         self.is_playing = False
         self.is_recording = False
         self.ableton_osc_server = None
+        self._name_flag = threading.Event()
+        self.transport_state_validated = threading.Event()
+        self.is_playing_validated = threading.Event()
+        self.is_recording_validated = threading.Event()
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
@@ -58,6 +62,10 @@ class Ableton(Daw):
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
                     )
                     self._connection_timeout_counter = 0
+
+    def _refresh_control_surfaces(self):
+        with self.ableton_send_lock:
+            self.ableton_client.send_message("/live/application/get/version", None)
 
     def _build_ableton_osc_servers(self):
         # Connect to Ableton via OSC
@@ -92,19 +100,28 @@ class Ableton(Daw):
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
-    def _marker_matcher(self, osc_address, test_name):
-        self._message_received()
-        # Matches a marker composite name with its Reaper ID
+    def _marker_matcher(self, osc_address, *args):
         from app_settings import settings
+        self._message_received()
+        # If name flag is set, we're labeling a new marker instead of matching an existing one.
+        if self._name_flag.is_set():
+            # We need to refer to markers by index, so we find the index number of the last marker placed
+            _last_marker = int((len(args) / 2)  - 1)
+            self.ableton_client.send_message("/live/song/cue_point/set/name", [_last_marker, self._new_marker_name])
+            self._name_flag.clear()
+        else:
+            # Matches a marker composite name with its Ableton Live Index
+            test_name = args[0]
+            if settings.name_only_match:
+                test_name = test_name.split(" ")
+                test_name = test_name[1:]
+                test_name = " ".join(test_name)
 
-        address_split = osc_address.split("/")
-        marker_id = address_split[2]
-        if settings.name_only_match:
-            test_name = test_name.split(" ")
-            test_name = test_name[1:]
-            test_name = " ".join(test_name)
-        if test_name == self.name_to_match:
-            self._goto_marker_by_id(marker_id)
+            _available_names = args[1::2]
+            for marker in _available_names:
+                if test_name == marker:
+                    self._goto_marker_by_name(marker)
+                    break
 
     def _current_transport_state(self, osc_address, val):
         self._message_received()
@@ -112,11 +129,13 @@ class Ableton(Daw):
         playing = None
         recording = None
         if osc_address == "/live/song/get/is_playing":
+            self.is_playing_validated.set()
             if val == False:
                 playing = False
             elif val == True:
                 playing = True
         elif osc_address == "/live/song/get/session_record":
+            self.is_recording_validated.set()
             if val == True:
                 recording = False
             elif val == False:
@@ -133,6 +152,10 @@ class Ableton(Daw):
         elif recording is False:
             self.is_recording = False
             logger.info("Ableton is not recording")
+        if self.is_playing_validated.is_set() and self.is_recording_validated.is_set():
+            self.transport_state_validated.set()
+            self.is_playing_validated.clear()
+            self.is_recording_validated.clear()
 
     def _goto_marker_by_name(self, marker_name):
         from app_settings import settings
@@ -146,13 +169,15 @@ class Ableton(Daw):
     def _place_marker_with_name(self, marker_name: str):
         logger.info(f"Placed marker for cue: {marker_name}")
         with self.ableton_send_lock:
-            self.ableton_client.send_message("/action", 40157)
-            self.ableton_client.send_message("/lastmarker/name", marker_name)
+            self.ableton_client.send_message("/live/song/cue_point/add_or_delete", None)
+            self._new_marker_name = marker_name
+            self._name_flag.set()
+            self.ableton_client.send_message("/live/song/get/cue_points", None)
 
     def get_marker_id_by_name(self, name: str):
         # Asks for current marker information based upon number of markers.
         from app_settings import settings
-
+        self.transport_state_validated.wait()
         if self.is_playing is False:
             self.name_to_match = name
             if settings.name_only_match:
@@ -192,9 +217,15 @@ class Ableton(Daw):
         with self.ableton_send_lock:
             self.ableton_client.send_message("/live/song/trigger_session_record", None)
 
+    def _update_current_transport_state(self) -> None:
+        with self.ableton_send_lock:
+            self.ableton_client.send_message("/live/song/get/is_playing", None)
+            self.ableton_client.send_message("/live/song/get/session_record", None)
+
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
-
+        self._update_current_transport_state()
+        self.transport_state_validated.clear()
         if (
             settings.marker_mode is PlaybackState.RECORDING
             and self.is_recording is True

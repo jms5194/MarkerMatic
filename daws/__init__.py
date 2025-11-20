@@ -3,6 +3,7 @@ from .reaper import Reaper
 from .protools import ProTools
 from .ardour import Ardour
 from .bitwig import Bitwig
+from .digitalperformer import DigitalPerformer
 from .abletonlive import Ableton
 
 DAWS = {
@@ -10,8 +11,10 @@ DAWS = {
     "ProTools": ProTools,
     "Ardour": Ardour,
     "Bitwig Studio": Bitwig,
-    "AbletonLive": Ableton,
+    "Digital Performer": DigitalPerformer,
+    "Ableton Live": Ableton,
 }
 
 
-__all__ = ["Daw", "Reaper", "ProTools", "Ardour", "Bitwig", "Ableton"]
+__all__ = ["Daw", "Reaper", "ProTools", "Ardour", "Bitwig", "DigitalPerformer", "Ableton"]
+
