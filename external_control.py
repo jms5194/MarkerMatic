@@ -1,7 +1,7 @@
 import threading
 import time
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, Union
 
 import mido
 import mido.backends.rtmidi
@@ -57,7 +57,7 @@ def _handle_transport_change(_address: str, action: list[TransportAction], *_) -
     pub.sendMessage(PyPubSubTopics.TRANSPORT_ACTION, transport_action=action[0])
 
 
-def _handle_marker(_: str, marker_name=None) -> None:
+def _handle_marker(_address: str, marker_name: None|str=None) -> None:
     if marker_name:
         pub.sendMessage(PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name=marker_name)
     else:
