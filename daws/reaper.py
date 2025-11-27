@@ -21,6 +21,9 @@ class Reaper(Daw):
         self._connected = threading.Event()
         self._connection_check_lock = threading.Lock()
         self._connection_timeout_counter = 0
+        self._last_marker_number = str()
+        self._last_marker_number_lock = threading.Lock()
+        self.last_marker_changed = threading.Event()
         self.reaper_send_lock = threading.Lock()
         self.name_to_match = ""
         self.is_playing = False
@@ -127,6 +130,7 @@ class Reaper(Daw):
         self.reaper_dispatcher.map("/marker/*/name", self._marker_matcher)
         self.reaper_dispatcher.map("/play", self._current_transport_state)
         self.reaper_dispatcher.map("/record", self._current_transport_state)
+        self.reaper_dispatcher.map("/lastmarker/number/str", self._last_marker_received)
         self.reaper_dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
@@ -137,6 +141,23 @@ class Reaper(Daw):
             pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
+
+    @property
+    def last_marker_received(self) -> str:
+        with self._last_marker_number_lock:
+            return self._last_marker_number
+
+    @last_marker_received.setter
+    def last_marker_received(self, value: str) -> None:
+        with self._last_marker_number_lock:
+            if self._last_marker_number != value:
+                self.last_marker_changed.set()
+                self.last_marker_changed.clear()
+            self._last_marker_number = value
+
+    def _last_marker_received(self, _, marker_number: str) -> None:
+        self._message_received()
+        self.last_marker_received = marker_number
 
     def _marker_matcher(self, osc_address: str, test_name: str) -> None:
         self._message_received()
@@ -196,6 +217,9 @@ class Reaper(Daw):
         logger.info(f"Placed marker for cue: {marker_name}")
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40157)
+            if not self.last_marker_changed.wait(constants.MESSAGE_TIMEOUT_SECONDS):
+                logger.error("REAPER probably didn't place a new marker")
+                return
             self.reaper_client.send_message("/lastmarker/name", marker_name)
 
     def get_marker_id_by_name(self, name: str) -> None:
