@@ -30,7 +30,7 @@ class Reaper(Daw):
         self.is_recording = False
         self.reaper_osc_server = None
         pub.subscribe(
-            self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
+            self.place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
         pub.subscribe(self._incoming_transport_action, PyPubSubTopics.TRANSPORT_ACTION)
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
@@ -213,13 +213,19 @@ class Reaper(Daw):
         if self.is_playing and settings.allow_loading_while_playing:
             self._reaper_play()
 
-    def _place_marker_with_name(self, marker_name: str) -> None:
+    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self.place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         logger.info(f"Placed marker for cue: {marker_name}")
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40157)
-            if not self.last_marker_changed.wait(constants.MESSAGE_TIMEOUT_SECONDS):
-                logger.error("REAPER probably didn't place a new marker")
-                return
+        if not self.last_marker_changed.wait(constants.MESSAGE_TIMEOUT_SECONDS):
+            logger.error("REAPER probably didn't place a new marker")
+            return
+        with self.reaper_send_lock:
             self.reaper_client.send_message("/lastmarker/name", marker_name)
 
     def get_marker_id_by_name(self, name: str) -> None:
@@ -277,7 +283,7 @@ class Reaper(Daw):
             settings.marker_mode is PlaybackState.RECORDING
             and self.is_recording is True
         ):
-            self._place_marker_with_name(cue)
+            self.place_marker_with_name(cue, False)
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 
