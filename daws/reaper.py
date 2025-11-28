@@ -251,7 +251,7 @@ class Reaper(Daw):
 
         if (
             settings.marker_mode is PlaybackState.RECORDING
-            and self.is_recording is True
+            and self.is_recording
         ):
             self._place_marker_with_name(cue)
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
