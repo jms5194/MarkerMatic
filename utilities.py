@@ -255,6 +255,7 @@ class DawConsoleBridge:
             threading.Thread(
                 target=self.shutdown_and_restart_servers, args=(False,)
             ).start()
+            return
         else:
             with self._server_restart_lock:
                 self.close_servers()
