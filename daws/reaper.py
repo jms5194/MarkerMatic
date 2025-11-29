@@ -279,10 +279,7 @@ class Reaper(Daw):
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
 
-        if (
-            settings.marker_mode is PlaybackState.RECORDING
-            and self.is_recording
-        ):
+        if settings.marker_mode is PlaybackState.RECORDING and self.is_recording:
             self.place_marker_with_name(cue, False)
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
