@@ -172,6 +172,7 @@ class Reaper(Daw):
             test_name = " ".join(test_name)
         if test_name == self.name_to_match:
             self._goto_marker_by_id(marker_id)
+            self.name_to_match = ""
 
     def _current_transport_state(self, osc_address: str, val) -> None:
         self._message_received()
