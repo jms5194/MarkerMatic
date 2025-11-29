@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
@@ -25,7 +25,7 @@ class Reaper(Daw):
         self._last_marker_number_lock = threading.Lock()
         self.last_marker_changed = threading.Event()
         self.reaper_send_lock = threading.Lock()
-        self.name_to_match = ""
+        self.name_to_match: Optional[str] = None
         self.is_playing = False
         self.is_recording = False
         self.reaper_osc_server = None
@@ -167,12 +167,10 @@ class Reaper(Daw):
         address_split = osc_address.split("/")
         marker_id = address_split[2]
         if settings.name_only_match:
-            test_name = test_name.split(" ")
-            test_name = test_name[1:]
-            test_name = " ".join(test_name)
+            test_name = " ".join(test_name.split(" ")[1:])
         if test_name == self.name_to_match:
             self._goto_marker_by_id(marker_id)
-            self.name_to_match = ""
+            self.name_to_match = None
 
     def _current_transport_state(self, osc_address: str, val) -> None:
         self._message_received()
@@ -237,10 +235,8 @@ class Reaper(Daw):
             not self.is_playing or settings.allow_loading_while_playing
         ):
             self.name_to_match = name
-            if settings.name_only_match:
-                self.name_to_match = self.name_to_match.split(" ")
-                self.name_to_match = self.name_to_match[1:]
-                self.name_to_match = " ".join(self.name_to_match)
+            if settings.name_only_match and self.name_to_match is not None:
+                self.name_to_match = " ".join(self.name_to_match.split(" ")[1:])
             with self.reaper_send_lock:
                 self.reaper_client.send_message("/device/marker/count", 0)
                 # Is there a better way to handle this in OSC only? Max of 512 markers.
