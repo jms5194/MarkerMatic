@@ -255,11 +255,11 @@ class Reaper(Daw):
 
     def _reaper_play(self) -> None:
         with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1007)
+            self.reaper_client.send_message("/play", None)
 
     def _reaper_stop(self) -> None:
         with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1016)
+            self.reaper_client.send_message("/stop", None)
 
     def _reaper_rec(self) -> None:
         # Sends action to skip to end of project and then record, to prevent overwrites
@@ -271,7 +271,7 @@ class Reaper(Daw):
         )
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40043)
-            self.reaper_client.send_message("/action", 1013)
+            self.reaper_client.send_message("/record", None)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
