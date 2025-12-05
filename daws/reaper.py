@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, overload
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
@@ -212,6 +212,14 @@ class Reaper(Daw):
         if self.is_playing and settings.allow_loading_while_playing:
             self._reaper_play()
 
+    @overload
+    def place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
     def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         if as_thread:
             threading.Thread(
@@ -254,8 +262,12 @@ class Reaper(Daw):
             logger.error(f"Error processing transport macros: {e}")
 
     def _reaper_play(self) -> None:
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/play", None)
+        if self.is_recording:
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/record", None)
+        if not self.is_playing:
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/play", None)
 
     def _reaper_stop(self) -> None:
         with self.reaper_send_lock:
@@ -265,13 +277,15 @@ class Reaper(Daw):
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
-        settings.marker_mode = PlaybackState.RECORDING
-        pub.sendMessage(
-            PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
-        )
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 40043)
-            self.reaper_client.send_message("/record", None)
+        if not self.is_recording:
+            settings.marker_mode = PlaybackState.RECORDING
+            pub.sendMessage(
+                PyPubSubTopics.CHANGE_PLAYBACK_STATE,
+                selected_mode=PlaybackState.RECORDING,
+            )
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/action", 40043)
+                self.reaper_client.send_message("/record", None)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
