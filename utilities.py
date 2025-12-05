@@ -14,7 +14,7 @@ import constants
 import external_control
 from app_settings import settings
 from consoles import CONSOLES, Console
-from constants import PyPubSubTopics
+from constants import PyPubSubTopics, TransportAction
 from daws import DAWS, Daw
 from logger_config import logger
 
@@ -61,6 +61,7 @@ class DawConsoleBridge:
             os.makedirs(ini_folder)
         self.check_configuration()
         pub.setListenerExcHandler(ListenerExceptionHandler())
+        pub.subscribe(log_transport_action, PyPubSubTopics.TRANSPORT_ACTION)
 
     def check_configuration(self):
         "Check for a configuration file, and load settings from it"
@@ -271,6 +272,10 @@ class ListenerExceptionHandler(pub.IListenerExcHandler):
         logger.error(
             "While processing a PubSub, %s threw an exception %s", listenerID, topicObj
         )
+
+
+def log_transport_action(transport_action: TransportAction) -> None:
+    logger.info(f"{transport_action} transport action requested")
 
 
 def get_resources_directory_path() -> str:
