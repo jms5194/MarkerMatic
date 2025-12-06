@@ -6,7 +6,7 @@ from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Daw, configure_reaper
@@ -36,6 +36,7 @@ class Reaper(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -260,6 +261,29 @@ class Reaper(Daw):
                 self._reaper_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        print("recieved an arm action")
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._reaper_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._reaper_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing arming macros: {e}")
+
+
+    def _reaper_arm_all(self) -> None:
+        with self.reaper_send_lock:
+            self.reaper_client.send_message("/action", 40490)
+            logger.info("Reaper has armed all tracks")
+
+
+    def _reaper_disarm_all(self) -> None:
+        with self.reaper_send_lock:
+            self.reaper_client.send_message("/action", 40491)
+            logger.info("Reaper has disarmed all tracks")
+
 
     def _reaper_play(self) -> None:
         if self.is_recording:

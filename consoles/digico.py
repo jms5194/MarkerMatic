@@ -10,7 +10,7 @@ from pythonosc.osc_server import ThreadingOSCUDPServer
 
 import external_control
 import utilities
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Console, Feature
@@ -304,6 +304,32 @@ class DiGiCo(Console):
                     pub.sendMessage(
                         PyPubSubTopics.CHANGE_PLAYBACK_STATE,
                         selected_mode=PlaybackState.PLAYBACK_NO_TRACK,
+                    )
+                elif macro_name in (
+                    "reaper, arm_all",
+                    "reaper, arm",
+                    "reaper arm_all",
+                    "reaper arm",
+                    "arm, all"
+                    "arm all"
+                    "arm"
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.ARMED_ACTION,
+                        armed_action=ArmedAction.ARM_ALL,
+                    )
+                elif macro_name in (
+                    "reaper, disarm_all",
+                    "reaper, disarm",
+                    "reaper disarm_all",
+                    "reaper disarm",
+                    "disarm, all"
+                    "disarm all"
+                    "disarm"
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.ARMED_ACTION,
+                        armed_action=ArmedAction.DISARM_ALL,
                     )
             self.requested_macro_num = None
 

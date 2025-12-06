@@ -7,10 +7,11 @@ import grpc._channel
 import ptsl
 from grpc import ChannelConnectivity
 from ptsl import PTSL_pb2 as pt
+from ptsl.PTSL_pb2 import TransportState
 from pubsub import pub
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Daw
@@ -32,6 +33,7 @@ class ProTools(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -111,6 +113,15 @@ class ProTools(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._pro_tools_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._pro_tools_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing arming macros: {e}")
+
     def _handle_cue_load(self, cue: str) -> None:
         # Receives cue information from console and actions based on software mode
         from app_settings import settings
@@ -182,6 +193,30 @@ class ProTools(Daw):
                 pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
+
+    def _pro_tools_arm_all(self) -> None:
+        with self.pt_send_lock:
+            assert self.pt_engine_connection
+            try:
+                all_tracks = self.pt_engine_connection.track_list()
+                for track in all_tracks:
+                    track.is_record_enabled = True
+            except grpc._channel._InactiveRpcError:
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            return None
+
+    def _pro_tools_disarm_all(self) -> None:
+        with self.pt_send_lock:
+            assert self.pt_engine_connection
+            try:
+                all_tracks = self.pt_engine_connection.track_list()
+                for track in all_tracks:
+                    track.is_record_enabled = False
+            except grpc._channel._InactiveRpcError:
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            return None
 
     def _pro_tools_play(self):
         # Since Pro Tools only has a toggle of play state, additional logic is here to validate the toggle to the

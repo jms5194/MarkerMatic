@@ -11,7 +11,12 @@ from pythonosc.osc_server import ThreadingOSCUDPServer
 
 import constants
 from app_settings import settings
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import (
+    PlaybackState,
+    PyPubSubTopics,
+    TransportAction,
+    ArmedAction,
+)
 from logger_config import logger
 
 
@@ -46,6 +51,8 @@ def map_osc_external_control_dispatcher(dispatcher: Dispatcher) -> None:
         dispatcher.map(
             f"/markermatic/transport/{action}", _handle_transport_change, action
         )
+    for action in ArmedAction:
+        dispatcher.map(f"/markermatic/armed/{action}", _handle_armed, action)
     dispatcher.map("/markermatic/marker", _handle_marker)
 
 
@@ -55,6 +62,10 @@ def _handle_mode_change(_address: str, mode: list[PlaybackState], *_) -> None:
 
 def _handle_transport_change(_address: str, action: list[TransportAction], *_) -> None:
     pub.sendMessage(PyPubSubTopics.TRANSPORT_ACTION, transport_action=action[0])
+
+
+def _handle_armed(_address: str, armed: list[ArmedAction], *_) -> None:
+    pub.sendMessage(PyPubSubTopics.ARMED_ACTION, armed_action=armed[0])
 
 
 def _handle_marker(_address: str, marker_name: Optional[str] = None) -> None:

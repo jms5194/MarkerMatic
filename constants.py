@@ -66,6 +66,11 @@ class TransportAction(StrEnum):
     RECORD = "record"
 
 
+class ArmedAction(StrEnum):
+    ARM_ALL = "arm_all"
+    DISARM_ALL = "disarm_all"
+
+
 class PyPubSubTopics(StrEnum):
     REQUEST_DAW_RESTART = auto()
     UPDATE_MAIN_WINDOW_DISPLAY_SETTINGS = auto()
@@ -77,3 +82,4 @@ class PyPubSubTopics(StrEnum):
     PLACE_MARKER_WITH_NAME = auto()
     DAW_CONNECTION_STATUS = auto()
     TRANSPORT_ACTION = auto()
+    ARMED_ACTION = auto()
