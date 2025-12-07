@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 from pubsub import pub
 from pythonosc import tcp_client, osc_message_builder
@@ -36,6 +36,8 @@ class DigitalPerformer(Daw):
             "Sequence Start",
             "Sequence End",
         ]
+        self._current_track_quantity = 0
+        self._track_quantity_validated = threading.Event()
         self.digitalperformer_client = None
         pub.subscribe(
             self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
@@ -44,6 +46,7 @@ class DigitalPerformer(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -133,6 +136,7 @@ class DigitalPerformer(Daw):
         self.digitalperformer_client.dispatcher.map(
             "/Get_Time", self._place_marker_at_time
         )
+        self.digitalperformer_client.dispatcher.map("/TrackList/Get", self._set_current_track_quantity)
         self.digitalperformer_client.dispatcher.set_default_handler(
             self._message_received
         )
@@ -180,6 +184,14 @@ class DigitalPerformer(Daw):
         with self.digitalperformer_send_lock:
             self.digitalperformer_client.send_message("/TransportState/Get", None)
 
+    def _update_track_quantity(self) -> None:
+        with self.digitalperformer_send_lock:
+            self.digitalperformer_client.send_message("/TrackList/Get", None)
+
+    def _set_current_track_quantity(self, osc_address: str, track_qty: int) -> None:
+        self._track_quantity_validated.set()
+        self._current_track_quantity = track_qty
+
     def _current_transport_state(self, osc_address: str, val) -> None:
         # Watches what the Digital Performer playhead is doing.
         playing = None
@@ -225,7 +237,20 @@ class DigitalPerformer(Daw):
                 "/SelList_Set", [list_cookie, marker_id]
             )
 
-    def _place_marker_with_name(self, marker_name: str) -> None:
+    @overload
+    def place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         with self.digitalperformer_send_lock:
             self.new_marker_name = marker_name
             # Get our current playhead time in samples
@@ -278,6 +303,37 @@ class DigitalPerformer(Daw):
                 self._digitalperformer_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: constants.ArmedAction) -> None:
+        try:
+            if armed_action is constants.ArmedAction.ARM_ALL:
+                self._digitalperformer_arm_all()
+            elif armed_action is constants.ArmedAction.DISARM_ALL:
+                self._digitalperformer_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing armed macros: {e}")
+
+    def _digitalperformer_arm_all(self) -> None:
+        self._update_track_quantity()
+        self._track_quantity_validated.wait()
+        for i in range(0, self._current_track_quantity):
+            with self.digitalperformer_send_lock:
+                self.digitalperformer_client.send_message(
+                    f"/TrackList/{i}/RecordEnable", 1
+                )
+                print(f"/TrackList/{i}/RecordEnable")
+        self._track_quantity_validated.clear()
+
+    def _digitalperformer_disarm_all(self) -> None:
+        self._update_track_quantity()
+        self._track_quantity_validated.wait()
+        for i in range(0, self._current_track_quantity):
+            with self.digitalperformer_send_lock:
+                self.digitalperformer_client.send_message(
+                    f"/TrackList/{i}/RecordEnable", 0
+                )
+                print(f"/TrackList/{i}/RecordEnable")
+        self._track_quantity_validated.clear()
 
     def _digitalperformer_play(self) -> None:
         with self.digitalperformer_send_lock:

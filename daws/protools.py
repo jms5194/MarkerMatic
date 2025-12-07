@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 import grpc
 import grpc._channel
@@ -8,6 +8,7 @@ import ptsl
 from grpc import ChannelConnectivity
 from ptsl import PTSL_pb2 as pt
 from ptsl.PTSL_pb2 import TransportState
+from ptsl.PTSL_pb2 import SetTrackRecordEnableState
 from pubsub import pub
 
 import constants
@@ -80,7 +81,20 @@ class ProTools(Daw):
             with self.pt_send_lock:
                 self.pt_engine_connection = None
 
+    @overload
     def _place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
@@ -195,24 +209,34 @@ class ProTools(Daw):
                 self._open_protools_connection()
 
     def _pro_tools_arm_all(self) -> None:
+        # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
                 for track in all_tracks:
-                    track.is_record_enabled = True
+                    if track.type == 1 or 2:
+                        print(f"Arming {track.name}")
+                        # self.pt_engine_connection.SetTrackRecordEnabledState = True
+                    else:
+                        logger.info("No audio or midi tracks found")
             except grpc._channel._InactiveRpcError:
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
             return None
 
     def _pro_tools_disarm_all(self) -> None:
+        # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
                 for track in all_tracks:
-                    track.is_record_enabled = False
+                    if track.type == 1 or 2:
+                        print(f"Disarming {track.name}")
+                        # track.SetTrackRecordEnabledState = False
+                    else:
+                        logger.info("No audio or midi tracks found")
             except grpc._channel._InactiveRpcError:
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
