@@ -321,7 +321,6 @@ class DigitalPerformer(Daw):
                 self.digitalperformer_client.send_message(
                     f"/TrackList/{i}/RecordEnable", 1
                 )
-                print(f"/TrackList/{i}/RecordEnable")
         self._track_quantity_validated.clear()
 
     def _digitalperformer_disarm_all(self) -> None:
@@ -332,7 +331,6 @@ class DigitalPerformer(Daw):
                 self.digitalperformer_client.send_message(
                     f"/TrackList/{i}/RecordEnable", 0
                 )
-                print(f"/TrackList/{i}/RecordEnable")
         self._track_quantity_validated.clear()
 
     def _digitalperformer_play(self) -> None:
