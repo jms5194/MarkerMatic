@@ -311,8 +311,8 @@ class DiGiCo(Console):
                     "reaper arm_all",
                     "reaper arm",
                     "arm, all"
-                    "arm all"
-                    "arm"
+                    "arm all",
+                    "arm",
                 ):
                     pub.sendMessage(
                         PyPubSubTopics.ARMED_ACTION,
@@ -323,9 +323,9 @@ class DiGiCo(Console):
                     "reaper, disarm",
                     "reaper disarm_all",
                     "reaper disarm",
-                    "disarm, all"
-                    "disarm all"
-                    "disarm"
+                    "disarm, all",
+                    "disarm all",
+                    "disarm",
                 ):
                     pub.sendMessage(
                         PyPubSubTopics.ARMED_ACTION,

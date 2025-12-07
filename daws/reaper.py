@@ -263,7 +263,6 @@ class Reaper(Daw):
             logger.error(f"Error processing transport macros: {e}")
 
     def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
-        print("recieved an arm action")
         try:
             if armed_action is ArmedAction.ARM_ALL:
                 self._reaper_arm_all()
@@ -272,18 +271,15 @@ class Reaper(Daw):
         except Exception as e:
             logger.error(f"Error processing arming macros: {e}")
 
-
     def _reaper_arm_all(self) -> None:
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40490)
             logger.info("Reaper has armed all tracks")
 
-
     def _reaper_disarm_all(self) -> None:
         with self.reaper_send_lock:
             self.reaper_client.send_message("/action", 40491)
             logger.info("Reaper has disarmed all tracks")
-
 
     def _reaper_play(self) -> None:
         if self.is_recording:
