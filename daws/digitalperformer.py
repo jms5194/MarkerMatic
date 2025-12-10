@@ -75,29 +75,28 @@ class DigitalPerformer(Daw):
                     )
                     self._connection_timeout_counter = 0
 
-    @staticmethod
-    def _get_current_digital_performer_osc_port():
+    def _get_current_digital_performer_osc_port(self):
         zeroconf_type = "_osc._tcp.local."
         zeroconf_name = "Digital Performer OSC"
-
         with Zeroconf() as zc:
             info = None
             while not info:
-                try:
-                    full_name = zeroconf_name + "." + zeroconf_type
-                    info = ServiceInfo(zeroconf_type, full_name)
-                    success = info.request(zc, timeout=1.0)
-                    if not success:
-                        logger.info("No Digital Performer instance running.")
+                while not self._shutdown_server_event.is_set():
+                    try:
+                        full_name = zeroconf_name + "." + zeroconf_type
+                        info = ServiceInfo(zeroconf_type, full_name)
+                        success = info.request(zc, timeout=1.0)
+                        if not success:
+                            logger.info("No Digital Performer instance running.")
+                            time.sleep(1)
+                            info = None
+                    except Exception as e:
+                        logger.error(f"Zeroconf error: {e}")
                         time.sleep(1)
-                        info = None
-                except Exception as e:
-                    logger.error(f"Zeroconf error: {e}")
-                    time.sleep(1)
 
-            dp_port = info.port
-            logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
-            return dp_port
+                dp_port = info.port
+                logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
+                return dp_port
 
     def _build_digitalperformer_osc_servers(self) -> None:
         # Connect to Digital Performer via OSC
@@ -238,11 +237,11 @@ class DigitalPerformer(Daw):
             )
 
     @overload
-    def place_marker_with_name(self, marker_name: str) -> None:
+    def _place_marker_with_name(self, marker_name: str) -> None:
         pass
 
     @overload
-    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         pass
 
     def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:

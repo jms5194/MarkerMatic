@@ -30,7 +30,7 @@ class Reaper(Daw):
         self.is_recording = False
         self.reaper_osc_server = None
         pub.subscribe(
-            self.place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
+            self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
         pub.subscribe(self._incoming_transport_action, PyPubSubTopics.TRANSPORT_ACTION)
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
@@ -214,17 +214,17 @@ class Reaper(Daw):
             self._reaper_play()
 
     @overload
-    def place_marker_with_name(self, marker_name: str) -> None:
+    def _place_marker_with_name(self, marker_name: str) -> None:
         pass
 
     @overload
-    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         pass
 
-    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         if as_thread:
             threading.Thread(
-                target=self.place_marker_with_name, args=(marker_name, False)
+                target=self._place_marker_with_name, args=(marker_name, False)
             ).start()
             return
         logger.info(f"Placed marker for cue: {marker_name}")
@@ -311,7 +311,7 @@ class Reaper(Daw):
         from app_settings import settings
 
         if settings.marker_mode is PlaybackState.RECORDING and self.is_recording:
-            self.place_marker_with_name(cue, False)
+            self._place_marker_with_name(cue, False)
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 
