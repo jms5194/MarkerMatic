@@ -80,23 +80,22 @@ class DigitalPerformer(Daw):
         zeroconf_name = "Digital Performer OSC"
         with Zeroconf() as zc:
             info = None
-            while not info:
-                while not self._shutdown_server_event.is_set():
-                    try:
-                        full_name = zeroconf_name + "." + zeroconf_type
-                        info = ServiceInfo(zeroconf_type, full_name)
-                        success = info.request(zc, timeout=1.0)
-                        if not success:
-                            logger.info("No Digital Performer instance running.")
-                            time.sleep(1)
-                            info = None
-                    except Exception as e:
-                        logger.error(f"Zeroconf error: {e}")
+            while not info and not self._shutdown_server_event.is_set() :
+                try:
+                    full_name = zeroconf_name + "." + zeroconf_type
+                    info = ServiceInfo(zeroconf_type, full_name)
+                    success = info.request(zc, timeout=1.0)
+                    if not success:
+                        logger.info("No Digital Performer instance running.")
                         time.sleep(1)
+                        info = None
+                except Exception as e:
+                    logger.error(f"Zeroconf error: {e}")
+                    time.sleep(1)
 
-                dp_port = info.port
-                logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
-                return dp_port
+            dp_port = info.port
+            logger.info(f"Digital Performer's OSC server can be found at: {dp_port}")
+            return dp_port
 
     def _build_digitalperformer_osc_servers(self) -> None:
         # Connect to Digital Performer via OSC
@@ -108,10 +107,10 @@ class DigitalPerformer(Daw):
                     self._get_current_digital_performer_osc_port(),
                     mode="1.0",
                 )
+                self._receive_digitalperformer_OSC()
+                self._connected.set()
             except Exception:
                 time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
-            self._receive_digitalperformer_OSC()
-            self._connected.set()
             while (
                 not self._shutdown_server_event.is_set()
             ) and self._connected.is_set():
