@@ -1,12 +1,13 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 import psutil
 import wx
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
+import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
@@ -36,6 +37,7 @@ class Ardour(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -215,7 +217,20 @@ class Ardour(Daw):
                 pass
         logger.debug(f"Ardour process open files: {open_files}")
 
+    @overload
     def _place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         with self.ardour_send_lock:
             self.ardour_client.send_message("/add_marker", marker_name)
 
@@ -229,6 +244,15 @@ class Ardour(Daw):
                 self._ardour_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: constants.ArmedAction) -> None:
+        try:
+            if armed_action is constants.ArmedAction.ARM_ALL:
+                self._ardour_arm_all()
+            elif armed_action is constants.ArmedAction.DISARM_ALL:
+                self._ardour_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing armed macros: {e}")
 
     def _ardour_play(self) -> None:
         with self.ardour_send_lock:
@@ -252,6 +276,14 @@ class Ardour(Daw):
             self.ardour_client.send_message("/goto_end", None)
             self.ardour_client.send_message("/rec_enable_toggle", 1.0)
             self.ardour_client.send_message("/transport_play", 1.0)
+
+    def _ardour_arm_all(self) -> None:
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/access_action", "Recorder/arm-all")
+
+    def _ardour_disarm_all(self) -> None:
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/access_action","Recorder/arm-none")
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
