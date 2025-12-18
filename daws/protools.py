@@ -210,14 +210,14 @@ class ProTools(Daw):
 
     def _pro_tools_arm_all(self) -> None:
         # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
+        print("Arming all tracks")
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
                 for track in all_tracks:
-                    if track.type == 1 or 2:
-                        print(f"Arming {track.name}")
-                        # self.pt_engine_connection.SetTrackRecordEnabledState = True
+                    if track.type is 1 or track.type is 2:
+                        self.pt_engine_connection.set_track_record_enable(track, True)
                     else:
                         logger.info("No audio or midi tracks found")
             except grpc._channel._InactiveRpcError:
@@ -227,14 +227,14 @@ class ProTools(Daw):
 
     def _pro_tools_disarm_all(self) -> None:
         # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
+        print("Disarming all tracks")
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
                 for track in all_tracks:
-                    if track.type == 1 or 2:
-                        print(f"Disarming {track.name}")
-                        # track.SetTrackRecordEnabledState = False
+                    if track.type is 1 or track.type is 2:
+                        self.pt_engine_connection.set_track_record_enable(track, False)
                     else:
                         logger.info("No audio or midi tracks found")
             except grpc._channel._InactiveRpcError:

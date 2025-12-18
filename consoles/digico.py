@@ -310,7 +310,8 @@ class DiGiCo(Console):
                     "reaper, arm",
                     "reaper arm_all",
                     "reaper arm",
-                    "arm, all"
+                    "arm, all",
+                    "arm,all",
                     "arm all",
                     "arm",
                 ):
@@ -324,6 +325,7 @@ class DiGiCo(Console):
                     "reaper disarm_all",
                     "reaper disarm",
                     "disarm, all",
+                    "disarm,all",
                     "disarm all",
                     "disarm",
                 ):
