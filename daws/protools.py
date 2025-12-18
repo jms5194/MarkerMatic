@@ -215,11 +215,11 @@ class ProTools(Daw):
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
+                track_names = []
                 for track in all_tracks:
                     if track.type is 1 or track.type is 2:
-                        self.pt_engine_connection.set_track_record_enable(track, True)
-                    else:
-                        logger.info("No audio or midi tracks found")
+                        track_names.append(track.name)
+                self.pt_engine_connection.set_track_record_enable(*track_names, new_state=True)
             except grpc._channel._InactiveRpcError:
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
@@ -232,11 +232,13 @@ class ProTools(Daw):
             assert self.pt_engine_connection
             try:
                 all_tracks = self.pt_engine_connection.track_list()
+                track_names = []
                 for track in all_tracks:
                     if track.type is 1 or track.type is 2:
-                        self.pt_engine_connection.set_track_record_enable(track, False)
-                    else:
-                        logger.info("No audio or midi tracks found")
+                        track_names.append(track.name)
+                self.pt_engine_connection.set_track_record_enable(
+                    *track_names, new_state=False
+                )
             except grpc._channel._InactiveRpcError:
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
