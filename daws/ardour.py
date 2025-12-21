@@ -2,7 +2,6 @@ import threading
 import time
 from typing import Any, Callable, overload
 
-import psutil
 import wx
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
@@ -193,29 +192,11 @@ class Ardour(Daw):
             logger.info("Ardour is not recording")
 
     def _goto_marker_by_name(self, marker_name: str) -> None:
-        from app_settings import settings
-
-        if settings.name_only_match:
-            self._get_open_files_for_ardour()
-        else:
-            with self.ardour_send_lock:
-                self.ardour_client.send_message("/marker", marker_name)
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/marker", marker_name)
 
     def get_marker_id_by_name(self, name: str) -> None:
         pass
-
-    def _get_open_files_for_ardour(self) -> None:
-        # TODO: find a way to match that
-        process_name = "Ardour8"
-        open_files = []
-        for proc in psutil.process_iter(["pid", "name", "open_files"]):
-            try:
-                if proc.info["name"] == process_name:
-                    for f in proc.info["open_files"]:
-                        open_files.append(f.path)
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                pass
-        logger.debug(f"Ardour process open files: {open_files}")
 
     @overload
     def _place_marker_with_name(self, marker_name: str) -> None:
@@ -283,7 +264,7 @@ class Ardour(Daw):
 
     def _ardour_disarm_all(self) -> None:
         with self.ardour_send_lock:
-            self.ardour_client.send_message("/access_action","Recorder/arm-none")
+            self.ardour_client.send_message("/access_action", "Recorder/arm-none")
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
