@@ -20,7 +20,7 @@ import utilities
 from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
-from daws import Daw
+from daws import DAWS, Daw, DawFeature
 import external_control
 from logger_config import logger, get_log_file
 from utilities import DawConsoleBridge
@@ -141,6 +141,7 @@ class MainWindow(wx.Frame):
                 parent=wx.GetTopLevelParent(self),
                 title=f"{constants.APPLICATION_NAME} Preferences",
                 console=self.BridgeFunctions.console,
+                daw=self.BridgeFunctions.daw,
                 icons=self.get_app_icons(),
                 updater=self.updater,
             )
@@ -474,6 +475,7 @@ class PrefsWindow(wx.Frame):
         title,
         parent,
         console: Console,
+        daw: Daw,
         icons: wx.IconBundle,
         updater: updates.Updater,
     ):
@@ -484,7 +486,7 @@ class PrefsWindow(wx.Frame):
             title=title,
             style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX),
         )
-        PrefsPanel(self, console=console, updater=updater)
+        PrefsPanel(self, console=console, daw=daw, updater=updater)
         self.Fit()
         if self.GetSize().Width < 360:
             self.SetSize(width=360, height=-1)
@@ -493,7 +495,7 @@ class PrefsWindow(wx.Frame):
 
 
 class PrefsPanel(wx.Panel):
-    def __init__(self, parent, console: Console, updater: updates.Updater):
+    def __init__(self, parent, console: Console, daw: Daw, updater: updates.Updater):
         logger.info("Creating PrefsPanel")
         wx.Panel.__init__(self, parent)
         self.updater = updater
@@ -867,8 +869,9 @@ class PrefsPanel(wx.Panel):
         self.SetSizer(panel_sizer)
         self.Fit()
 
-        # Update console supported features with the currently set console
+        # Update supported features with the currently set console and DAW
         self.update_console_supported_features(console)
+        self.update_daw_supported_features(daw)
 
         # Prefs Window Bindings
         self.Bind(wx.EVT_BUTTON, self.update_button_pressed, update_button)
@@ -878,6 +881,7 @@ class PrefsPanel(wx.Panel):
             wx.EVT_KILL_FOCUS, self.check_cue_list_player
         )
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
+        self.daw_type_choice.Bind(wx.EVT_CHOICE, self.changed_daw_type)
         self.repeater_radio_enabled.Bind(
             wx.EVT_CHECKBOX,
             self.update_repeater_fields,
@@ -940,6 +944,17 @@ class PrefsPanel(wx.Panel):
         self.console_cue_list_player_control.Enabled = (
             Feature.CUE_LIST_PLAYER in console.supported_features
         )
+
+    def changed_daw_type(self, event: wx.CommandEvent) -> None:
+        self.daw: Daw = DAWS[event.GetString()]
+        self.update_daw_supported_features(self.daw)
+
+    def update_daw_supported_features(self, daw: Daw) -> None:
+        self.match_mode_label_only.Enabled = (
+            DawFeature.NAME_ONLY_MATCH in daw.supported_features
+        )
+        if DawFeature.NAME_ONLY_MATCH not in daw.supported_features:
+            self.match_mode_label_only.SetValue(False)
 
     def update_button_pressed(self, e):
         logger.info("Updating configuration settings.")

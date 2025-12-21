@@ -11,11 +11,12 @@ import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
-from . import Daw
+from . import Daw, DawFeature
 
 
 class DigitalPerformer(Daw):
     type = "Digital Performer"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self) -> None:
         super().__init__()
@@ -80,7 +81,7 @@ class DigitalPerformer(Daw):
         zeroconf_name = "Digital Performer OSC"
         with Zeroconf() as zc:
             info = None
-            while not info and not self._shutdown_server_event.is_set() :
+            while not info and not self._shutdown_server_event.is_set():
                 try:
                     full_name = zeroconf_name + "." + zeroconf_type
                     info = ServiceInfo(zeroconf_type, full_name)
@@ -134,7 +135,9 @@ class DigitalPerformer(Daw):
         self.digitalperformer_client.dispatcher.map(
             "/Get_Time", self._place_marker_at_time
         )
-        self.digitalperformer_client.dispatcher.map("/TrackList/Get", self._set_current_track_quantity)
+        self.digitalperformer_client.dispatcher.map(
+            "/TrackList/Get", self._set_current_track_quantity
+        )
         self.digitalperformer_client.dispatcher.set_default_handler(
             self._message_received
         )

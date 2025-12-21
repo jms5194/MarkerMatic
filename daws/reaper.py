@@ -9,11 +9,12 @@ import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
-from . import Daw, configure_reaper
+from . import Daw, configure_reaper, DawFeature
 
 
 class Reaper(Daw):
     type = "Reaper"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()

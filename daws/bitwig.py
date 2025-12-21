@@ -11,11 +11,12 @@ import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
-from . import Daw, configure_bitwig
+from . import Daw, configure_bitwig, DawFeature
 
 
 class Bitwig(Daw):
     type = "Bitwig Studio"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()

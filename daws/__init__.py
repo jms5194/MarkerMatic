@@ -1,4 +1,4 @@
-from .daw import Daw
+from .daw import Daw, DawFeature
 from .reaper import Reaper
 from .protools import ProTools
 from .ardour import Ardour
@@ -14,4 +14,4 @@ DAWS = {
 }
 
 
-__all__ = ["Daw", "Reaper", "ProTools", "Ardour", "Bitwig"]
+__all__ = ["Daw", "DawFeature", "Reaper", "ProTools", "Ardour", "Bitwig"]

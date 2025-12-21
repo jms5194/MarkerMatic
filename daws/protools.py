@@ -15,11 +15,12 @@ import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
-from . import Daw
+from . import Daw, DawFeature
 
 
 class ProTools(Daw):
     type = "ProTools"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()
@@ -219,7 +220,9 @@ class ProTools(Daw):
                 for track in all_tracks:
                     if track.type is 1 or track.type is 2:
                         track_names.append(track.name)
-                self.pt_engine_connection.set_track_record_enable(*track_names, new_state=True)
+                self.pt_engine_connection.set_track_record_enable(
+                    *track_names, new_state=True
+                )
             except grpc._channel._InactiveRpcError:
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
