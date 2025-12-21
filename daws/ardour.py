@@ -49,28 +49,22 @@ class Ardour(Daw):
 
     @staticmethod
     def _validate_ardour_prefs():
-        # Check if OSC is turned on in Ardour's config file.
-        # If not, enable it and restart Ardour.
+        """Find Ardour process and enable OSC configuration"""
         try:
-            if not configure_ardour.osc_interface_exists(
-                configure_ardour.get_resource_path(True)
-            ):
-                try:
-                    configure_ardour.get_ardour_process_path()
-                    pub.sendMessage(
-                        PyPubSubTopics.REQUEST_DAW_RESTART, daw_name="Ardour"
-                    )
-                    enable_osc_thread = threading.Thread(
-                        target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),),
-                    )
-                    enable_osc_thread.start()
-                except RuntimeError:
-                    enable_osc_thread = threading.Thread(
-                        target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),),
-                    )
-                    enable_osc_thread.start()
+            resource_path = configure_ardour.get_resource_path(True)
+            try:
+                configure_ardour.get_ardour_process_path()
+                enable_osc_thread = threading.Thread(
+                    target=configure_ardour.enable_osc_interface,
+                    args=(resource_path,),
+                )
+                enable_osc_thread.start()
+            except RuntimeError:
+                enable_osc_thread = threading.Thread(
+                    target=configure_ardour.enable_osc_interface,
+                    args=(resource_path,),
+                )
+                enable_osc_thread.start()
         except Exception as e:
             logger.error(f"Error validating Ardour preferences: {e}")
 
@@ -110,10 +104,12 @@ class Ardour(Daw):
                         )
                         # Check that Ardour has received our configuration request
                         self.ardour_client.send_message("/set_surface", None)
-                    logger.info("Sent Ardour OSC configuration request")
                 except Exception:
-                    logger.error("Ardour not yet available, retrying in 1 second")
-            time.sleep(1)
+                    pass
+            logger.error(
+                f"Ardour not yet available, retrying in {constants.CONNECTION_RECONNECTION_DELAY_SECONDS} second(s)"
+            )
+            time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _ardour_connected_status(self, osc_address: str, val) -> None:
         # Watches if Ardour is connected to the OSC server.
