@@ -7,8 +7,6 @@ import grpc._channel
 import ptsl
 from grpc import ChannelConnectivity
 from ptsl import PTSL_pb2 as pt
-from ptsl.PTSL_pb2 import TransportState
-from ptsl.PTSL_pb2 import SetTrackRecordEnableState
 from pubsub import pub
 
 import constants
@@ -218,7 +216,7 @@ class ProTools(Daw):
                 all_tracks = self.pt_engine_connection.track_list()
                 track_names = []
                 for track in all_tracks:
-                    if track.type is 1 or track.type is 2:
+                    if track.type == 1 or track.type == 2:
                         track_names.append(track.name)
                 self.pt_engine_connection.set_track_record_enable(
                     *track_names, new_state=True
@@ -237,7 +235,7 @@ class ProTools(Daw):
                 all_tracks = self.pt_engine_connection.track_list()
                 track_names = []
                 for track in all_tracks:
-                    if track.type is 1 or track.type is 2:
+                    if track.type == 1 or track.type == 2:
                         track_names.append(track.name)
                 self.pt_engine_connection.set_track_record_enable(
                     *track_names, new_state=False
