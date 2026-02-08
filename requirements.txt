@@ -15,4 +15,4 @@ Pypubsub==4.0.3
 python-osc @git+https://github.com/jms5194/python-osc/
 python-rtmidi==1.5.8
 show-in-file-manager==1.1.5
-wxPython==4.2.3
+wxPython==4.2.5
