@@ -135,8 +135,13 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _place_marker_with_name(self, marker_name: str) -> None:
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         # Bitwig markers can only be placed on a bar/beat reference, so will never be 100% accurate
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         try:
             cur_marker_qty = self.bitwig_cuemarkerbank.itemCount().get()
             self.bitwig_transport.addCueMarkerAtPlaybackPosition()
