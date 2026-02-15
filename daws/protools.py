@@ -208,7 +208,6 @@ class ProTools(Daw):
                 self._open_protools_connection()
 
     def _pro_tools_arm_all(self) -> None:
-        # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
         print("Arming all tracks")
         with self.pt_send_lock:
             assert self.pt_engine_connection
@@ -227,7 +226,6 @@ class ProTools(Daw):
             return None
 
     def _pro_tools_disarm_all(self) -> None:
-        # This doesn't function yet- need to add the SetTrackRecordEnabledState functionality to py-ptsl
         print("Disarming all tracks")
         with self.pt_send_lock:
             assert self.pt_engine_connection

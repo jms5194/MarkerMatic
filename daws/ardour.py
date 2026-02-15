@@ -7,7 +7,7 @@ from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Daw, configure_ardour
@@ -222,11 +222,11 @@ class Ardour(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _incoming_armed_action(self, armed_action: constants.ArmedAction) -> None:
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
         try:
-            if armed_action is constants.ArmedAction.ARM_ALL:
+            if armed_action is ArmedAction.ARM_ALL:
                 self._ardour_arm_all()
-            elif armed_action is constants.ArmedAction.DISARM_ALL:
+            elif armed_action is ArmedAction.DISARM_ALL:
                 self._ardour_disarm_all()
         except Exception as e:
             logger.error(f"Error processing armed macros: {e}")

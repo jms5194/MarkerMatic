@@ -8,7 +8,7 @@ from py4j.java_gateway import JavaGateway
 from py4j.protocol import Py4JError, Py4JJavaError, Py4JNetworkError
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Daw, configure_bitwig, DawFeature
@@ -74,6 +74,7 @@ class Bitwig(Daw):
                 self.bitwig_transport = self.gateway_entry_point.getTransport()
                 self.bitwig_arranger = self.gateway_entry_point.getArranger()
                 self.bitwig_cuemarkerbank = self.gateway_entry_point.getCueMarkerBank()
+                self.bitwig_trackbank = self.gateway_entry_point.getTrackBank()
                 self._build_marker_dict()
                 self._shutdown_or_restart_server_event.wait()
             except Exception:
@@ -90,6 +91,15 @@ class Bitwig(Daw):
                 self._bitwig_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._bitwig_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._bitwig_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing armed macros: {e}")
 
     def _build_marker_dict(self) -> None:
         try:
@@ -248,6 +258,34 @@ class Bitwig(Daw):
     def _bitwig_stop(self) -> None:
         try:
             self.bitwig_transport.stop()
+        except (
+            AttributeError,
+            Py4JError,
+            Py4JNetworkError,
+            Py4JJavaError,
+            ConnectionRefusedError,
+            IndexError,
+        ):
+            logger.error("Lost Connection to Bitwig. Attempting reconnect")
+            self._bitwig_reconnect_attempt()
+
+    def _bitwig_arm_all(self) -> None:
+        try:
+            self.gateway_entry_point.armAllTracks(self.bitwig_trackbank)
+        except (
+            AttributeError,
+            Py4JError,
+            Py4JNetworkError,
+            Py4JJavaError,
+            ConnectionRefusedError,
+            IndexError,
+        ):
+            logger.error("Lost Connection to Bitwig. Attempting reconnect")
+            self._bitwig_reconnect_attempt()
+
+    def _bitwig_disarm_all(self) -> None:
+        try:
+            self.gateway_entry_point.disarmAllTracks(self.bitwig_trackbank)
         except (
             AttributeError,
             Py4JError,
