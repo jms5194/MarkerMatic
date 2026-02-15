@@ -293,7 +293,7 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 Pypubsub
-4.0.3
+4.0.7
 BSD License
 Copyright (c) since 2006, Oliver Schoenborn
 All rights reserved.
@@ -1123,7 +1123,7 @@ support library is itself covered by the above license.
 
 
 psutil
-7.0.0
+7.2.2
 BSD License
 BSD 3-Clause License
 
@@ -1157,7 +1157,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 py-ptsl
-500.1.1
+600.2.0
 BSD License
 BSD 3-Clause License
 
@@ -2494,7 +2494,7 @@ RtMidi is distributed under a modified MIT License:
 
 
 wxPython
-4.2.3
+4.2.5
 wxWindows Library License (https://opensource.org/licenses/wxwindows.php)
 Copyright (c) since 2006, Oliver Schoenborn
 All rights reserved.
