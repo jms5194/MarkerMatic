@@ -34,6 +34,7 @@ class Bitwig(Daw):
         pub.subscribe(
             self._shutdown_or_restart_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS
         )
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -275,6 +276,7 @@ class Bitwig(Daw):
             self._bitwig_reconnect_attempt()
 
     def _bitwig_arm_all(self) -> None:
+        logger.info("arming bitwig tracks")
         try:
             self.gateway_entry_point.armAllTracks(self.bitwig_trackbank)
         except (
@@ -289,6 +291,7 @@ class Bitwig(Daw):
             self._bitwig_reconnect_attempt()
 
     def _bitwig_disarm_all(self) -> None:
+        logger.info("disarming bitwig tracks")
         try:
             self.gateway_entry_point.disarmAllTracks(self.bitwig_trackbank)
         except (
