@@ -2,9 +2,14 @@ import time
 from typing import Any, Callable, Optional
 
 from pubsub import pub
-from pythonosc import udp_client
+from pythonosc import dispatcher, osc_server, udp_client
+from pythonosc.dispatcher import Dispatcher
+from pythonosc.osc_server import ThreadingOSCUDPServer
+
 import threading
 import constants
+import utilities
+from logger_config import logger
 from constants import PyPubSubTopics
 
 from . import Console
@@ -12,12 +17,13 @@ from . import Console
 
 class QLab(Console):
     fixed_send_port: int = 53000  # pyright: ignore[reportIncompatibleVariableOverride]
+    fixed_receive_port: int = 53001
     type = "QLab"
     supported_features = []
 
     def __init__(self) -> None:
         super().__init__()
-        self._client: udp_client.DispatchClient
+        self._client: udp_client.SimpleUDPClient
         self._cue_uniqueID: Optional[str] = None
         self._cue_number: Optional[str] = None
         self._cue_name: Optional[str] = None
@@ -32,16 +38,34 @@ class QLab(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
-
-        self._client = udp_client.DispatchClient(
+        print("here")
+        self._client = udp_client.SimpleUDPClient(
             settings.console_ip, self.fixed_send_port
         )
+        self._qlab_dispatcher = dispatcher.Dispatcher()
+        self._receive_console_OSC()
+        try:
+            self.qlab_osc_server = osc_server.ThreadingOSCUDPServer(
+                (
+                    utilities.get_ip_listen_any(settings.console_ip),
+                    self.fixed_receive_port,
+                ),
+                self._qlab_dispatcher,
+            )
+            logger.info("QLab OSC server started")
+            self.qlab_osc_server.serve_forever()
+        except Exception as e:
+            logger.error(f"QLab OSC server startup error: {e}")
 
-        self._client.dispatcher.map("/cue/*/number", self._cue_number_received)
-        self._client.dispatcher.map("/cue/*/name", self._cue_name_received)
 
-        self._client.dispatcher.map("/qlab/event/workspace/go/uniqueID", self._cue_uniqueID_received)
-        self._client.dispatcher.set_default_handler(self._message_received)
+    def _receive_console_OSC(self) -> None:
+        self._qlab_dispatcher.map("/reply/thump", self._subscribe_ok_received)
+
+        self._qlab_dispatcher.map("/cue/*/number", self._cue_number_received)
+        self._qlab_dispatcher.map("/cue/*/name", self._cue_name_received)
+
+        self._qlab_dispatcher.map("/qlab/event/workspace/go/uniqueID", self._cue_uniqueID_received)
+        self._qlab_dispatcher.set_default_handler(self._message_received)
 
         while not self._shutdown_server_event.is_set():
             try:
@@ -97,3 +121,4 @@ class QLab(Console):
     def heartbeat(self) -> None:
         if hasattr(self, "_client"):
             self._client.send_message("/forgetMeNot", True)
+            self._client.send_message("/thump", None)
