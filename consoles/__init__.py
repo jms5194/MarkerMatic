@@ -7,6 +7,7 @@ from .theatremix import TheatreMix
 from .yamaha import Yamaha
 from .dmitri import DMitri
 from .nadia import Nadia
+from .qlab import QLab
 
 CONSOLES = {
     "Behringer X32": BehringerX32,
@@ -17,6 +18,7 @@ CONSOLES = {
     "Yamaha": Yamaha,
     "Meyer Sound NADIA": Nadia,
     "Meyer Sound D-Mitri": DMitri,
+    "QLab 5": QLab,
 }
 
 __all__ = [
@@ -31,4 +33,5 @@ __all__ = [
     "Yamaha",
     "Nadia",
     "DMitri",
+    "QLab 5"
 ]
