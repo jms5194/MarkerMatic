@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Any, Callable, Optional
 
@@ -24,12 +25,14 @@ class QLab(Console):
     def __init__(self) -> None:
         super().__init__()
         self._client: udp_client.SimpleUDPClient
+        self.console_send_lock = threading.Lock()
         self._cue_uniqueID: Optional[str] = None
         self._cue_number: Optional[str] = None
         self._cue_name: Optional[str] = None
         self._new_uniqueID_received = threading.Event()
         self._new_cuenumber_received = threading.Event()
         self._new_cuename_received = threading.Event()
+        pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
@@ -38,12 +41,12 @@ class QLab(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
-        print("here")
         self._client = udp_client.SimpleUDPClient(
             settings.console_ip, self.fixed_send_port
         )
         self._qlab_dispatcher = dispatcher.Dispatcher()
         self._receive_console_OSC()
+        self.send_to_console("/listen/go/uniqueID", None)
         try:
             self.qlab_osc_server = osc_server.ThreadingOSCUDPServer(
                 (
@@ -57,23 +60,17 @@ class QLab(Console):
         except Exception as e:
             logger.error(f"QLab OSC server startup error: {e}")
 
-
     def _receive_console_OSC(self) -> None:
         self._qlab_dispatcher.map("/reply/thump", self._subscribe_ok_received)
-
-        self._qlab_dispatcher.map("/cue/*/number", self._cue_number_received)
-        self._qlab_dispatcher.map("/cue/*/name", self._cue_name_received)
-
+        self._qlab_dispatcher.map("/reply/cue_id/*/number", self._cue_number_received)
+        self._qlab_dispatcher.map("/reply/cue_id/*/name", self._cue_name_received)
         self._qlab_dispatcher.map("/qlab/event/workspace/go/uniqueID", self._cue_uniqueID_received)
         self._qlab_dispatcher.set_default_handler(self._message_received)
 
-        while not self._shutdown_server_event.is_set():
-            try:
-                self.heartbeat()
-                while not self._shutdown_server_event.is_set():
-                    self._client.handle_messages(constants.MESSAGE_TIMEOUT_SECONDS)
-            except Exception:
-                time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
+    def send_to_console(self, osc_address: str, *args) -> None:
+        # Send an OSC message to the console
+        with self.console_send_lock:
+            self._client.send_message(osc_address, [*args])
 
     def _subscribe_ok_received(self, _address: str, _expires_seconds: int) -> None:
         self._message_received()
@@ -86,23 +83,27 @@ class QLab(Console):
     ) -> None:
         self._cue_uniqueID = cue_uniqueID
         self._new_uniqueID_received.set()
-        self._client.send_message(f"#/cue/{cue_uniqueID}/name", None)
-        self._client.send_message(f"#/cue/{cue_uniqueID}/number", None)
+        self._client.send_message(f"/cue_id/{cue_uniqueID}/name", [])
+        self._client.send_message(f"/cue_id/{cue_uniqueID}/number", [])
         self._message_received()
 
-    def _cue_number_received(self, _address: str, cue_number: str) -> None:
+    def _cue_number_received(self, _address: str, cue_number_json: str) -> None:
         if self._new_uniqueID_received.is_set():
-            incoming_id = _address.split("/")[1]
+            incoming_id = _address.split("/")[3]
             if incoming_id == self._cue_uniqueID:
+                cue_number = json.loads(cue_number_json)
+                cue_number = cue_number["data"]
                 self._cue_number = cue_number
                 self._new_cuenumber_received.set()
                 if self._new_uniqueID_received.is_set() and self._new_cuename_received.is_set():
                     self._handle_cue_load(self._cue_number, self._cue_name)
 
-    def _cue_name_received(self, _address: str, cue_name: str) -> None:
+    def _cue_name_received(self, _address: str, cue_name_json: str) -> None:
         if self._new_uniqueID_received.is_set():
-            incoming_id = _address.split("/")[1]
+            incoming_id = _address.split("/")[3]
             if incoming_id == self._cue_uniqueID:
+                cue_name = json.loads(cue_name_json)
+                cue_name = cue_name["data"]
                 self._cue_name = cue_name
                 self._new_cuename_received.set()
                 if self._new_uniqueID_received.is_set() and self._new_cuename_received.is_set():
@@ -119,6 +120,18 @@ class QLab(Console):
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
 
     def heartbeat(self) -> None:
-        if hasattr(self, "_client"):
+        with self.console_send_lock:
+            assert isinstance(self._client, udp_client.UDPClient)
             self._client.send_message("/forgetMeNot", True)
             self._client.send_message("/thump", None)
+
+    def _shutdown_servers(self) -> None:
+        try:
+            self.send_to_console("/forgetMeNot", False)
+            self.send_to_console("/disconnect", None)
+            if self.qlab_osc_server:
+                self.qlab_osc_server.shutdown()
+                self.qlab_osc_server.server_close()
+                logger.info("QLab OSC Server shutdown completed")
+        except Exception as e:
+            logger.error(f"Error shutting down QLab server: {e}")
