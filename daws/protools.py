@@ -89,6 +89,7 @@ class ProTools(Daw):
         pass
 
     def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        print("placing marker:")
         if as_thread:
             threading.Thread(
                 target=self._place_marker_with_name, args=(marker_name, False)
@@ -96,16 +97,19 @@ class ProTools(Daw):
             return
         with self.pt_send_lock:
             assert self.pt_engine_connection
+            # Get current playhead selection
+            current_time = self.pt_engine_connection.get_timeline_selection()
+            # Set current time to playhead position
+            current_time = current_time[0]
             try:
+                print(f"Creating marker: {marker_name}")
                 self.pt_engine_connection.create_memory_location(
                     memory_number=-1,
-                    start_time="current_pos",
+                    start_time=current_time,
                     name=marker_name,
                     location="MLC_MainRuler",
                 )
                 # -1 seems to be a magic number for the next available memory_number.
-                # Start_time as current_pos is a hacky way to get it to drop where the playhead is- but throws an error.
-                # There must be a constant to put here that doesn't throw the error.
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
