@@ -86,6 +86,8 @@ class QLab(Console):
             if incoming_id == self._cue_uniqueID:
                 cue_number = json.loads(cue_number_json)
                 cue_number = cue_number["data"]
+                # Force the incoming cue number to be ascii characters only
+                cue_number = cue_number.encode(encoding="ascii", errors="ignore").decode("ascii")
                 self._cue_number = cue_number
                 self._new_cuenumber_received.set()
                 if self._new_cuename_received.is_set() and self._new_cuename_received.is_set():
@@ -97,6 +99,8 @@ class QLab(Console):
             if incoming_id == self._cue_uniqueID:
                 cue_name = json.loads(cue_name_json)
                 cue_name = cue_name["data"]
+                # Force the incoming cue name to be ascii characters only
+                cue_name = cue_name.encode(encoding="ascii", errors="ignore").decode("ascii")
                 self._cue_name = cue_name
                 self._new_cuename_received.set()
                 if self._new_cuenumber_received.is_set() and self._new_cuename_received.is_set():
