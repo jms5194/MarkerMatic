@@ -126,7 +126,7 @@ class ProTools(Daw):
                         general_properties=last_memory_loc.general_properties,
                         comments=last_memory_loc.comments,
                     )
-                except ptsl.errors.CommandError as e:
+            except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
             except grpc._channel._InactiveRpcError:
