@@ -89,7 +89,6 @@ class ProTools(Daw):
         pass
 
     def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
-        print("placing marker:")
         if as_thread:
             threading.Thread(
                 target=self._place_marker_with_name, args=(marker_name, False)
@@ -97,20 +96,36 @@ class ProTools(Daw):
             return
         with self.pt_send_lock:
             assert self.pt_engine_connection
-            # Get current playhead selection
-            current_time = self.pt_engine_connection.get_timeline_selection()
-            # Set current time to playhead position
-            current_time = current_time[0]
             try:
                 print(f"Creating marker: {marker_name}")
                 self.pt_engine_connection.create_memory_location(
                     memory_number=-1,
-                    start_time=current_time,
+                    start_time= "cur_pos",
                     name=marker_name,
                     location="MLC_MainRuler",
                 )
                 # -1 seems to be a magic number for the next available memory_number.
             except ptsl.errors.CommandError as e:
+                if e.error_type == pt.PT_InvalidParameter:
+                    logger.error("Bad parameter input to create_memory_location")
+            except grpc._channel._InactiveRpcError:
+                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            try:
+                all_memory_locs = self.pt_engine_connection.get_memory_locations()
+                last_memory_loc = all_memory_locs[-1]
+                self.pt_engine_connection.edit_memory_location(
+                    location_number=last_memory_loc.number,
+                    name=marker_name,
+                    start_time=last_memory_loc.start_time,
+                    end_time=last_memory_loc.end_time,
+                    time_properties=last_memory_loc.time_properties,
+                    reference=last_memory_loc.reference,
+                    general_properties=last_memory_loc.general_properties,
+                    comments=last_memory_loc.comments,
+                )
+                except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
             except grpc._channel._InactiveRpcError:
