@@ -115,16 +115,17 @@ class ProTools(Daw):
             try:
                 all_memory_locs = self.pt_engine_connection.get_memory_locations()
                 last_memory_loc = all_memory_locs[-1]
-                self.pt_engine_connection.edit_memory_location(
-                    location_number=last_memory_loc.number,
-                    name=marker_name,
-                    start_time=last_memory_loc.start_time,
-                    end_time=last_memory_loc.end_time,
-                    time_properties=last_memory_loc.time_properties,
-                    reference=last_memory_loc.reference,
-                    general_properties=last_memory_loc.general_properties,
-                    comments=last_memory_loc.comments,
-                )
+                if last_memory_loc.name != marker_name:
+                    self.pt_engine_connection.edit_memory_location(
+                        location_number=last_memory_loc.number,
+                        name=marker_name,
+                        start_time=last_memory_loc.start_time,
+                        end_time=last_memory_loc.end_time,
+                        time_properties=last_memory_loc.time_properties,
+                        reference=last_memory_loc.reference,
+                        general_properties=last_memory_loc.general_properties,
+                        comments=last_memory_loc.comments,
+                    )
                 except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
