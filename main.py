@@ -644,6 +644,13 @@ class PrefsPanel(wx.Panel):
         app_settings_section.Add(
             self.allow_loading_while_playing_checkbox, flag=wx.EXPAND
         )
+        # Always On Top
+        app_settings_section.Add(width=-1, height=-1)
+        self.always_on_top_checkbox = wx.CheckBox(
+            notebook_application, label="Always display on top"
+        )
+        self.always_on_top_checkbox.SetValue(settings.always_on_top)
+        app_settings_section.Add(self.always_on_top_checkbox, flag=wx.EXPAND)
         # Initial Mode
         app_settings_section.Add(
             wx.StaticText(
@@ -659,13 +666,6 @@ class PrefsPanel(wx.Panel):
         app_settings_section.Add(
             self.initial_mode_choice, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
         )
-        # Always On Top
-        app_settings_section.Add(width=-1, height=-1)
-        self.always_on_top_checkbox = wx.CheckBox(
-            notebook_application, label="Always display on top"
-        )
-        self.always_on_top_checkbox.SetValue(settings.always_on_top)
-        app_settings_section.Add(self.always_on_top_checkbox, flag=wx.EXPAND)
         if self.updater.updater_is_loaded:
             # Automatically check for updates
             app_settings_section.AddStretchSpacer()
