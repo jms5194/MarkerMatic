@@ -647,7 +647,7 @@ class PrefsPanel(wx.Panel):
         # Initial Mode
         app_settings_section.Add(
             wx.StaticText(
-                notebook_application, label="Initial Mode:", style=wx.ALIGN_RIGHT
+                notebook_application, label="Initial mode:", style=wx.ALIGN_RIGHT
             )
         )
         modes = [PlaybackState[x].ui for x in PlaybackState.__members__]
