@@ -519,7 +519,7 @@ class PrefsPanel(wx.Panel):
         self.port_font.MakeSmaller()
 
         self.notebook = wx.Notebook(self)
-        notebook_console = wx.Window(self.notebook)
+        notebook_console = wx.Panel(self.notebook)
         notebook_console_sizer = wx.BoxSizer(wx.VERTICAL)
         console_main_section = wx.FlexGridSizer(2, INTERNAL_SPACING, INTERNAL_SPACING)
         console_main_section.AddGrowableCol(1)
@@ -614,7 +614,7 @@ class PrefsPanel(wx.Panel):
         self.notebook.AddPage(notebook_console, "Console")
 
         # DAW Section
-        notebook_daw = wx.Window(self.notebook)
+        notebook_daw = wx.Panel(self.notebook)
         notebook_daw_sizer = wx.BoxSizer(wx.VERTICAL)
         notebook_daw_sizer.AddSpacer(INTERNAL_SPACING)
         daw_section = wx.FlexGridSizer(2, INTERNAL_SPACING, INTERNAL_SPACING)
@@ -641,7 +641,7 @@ class PrefsPanel(wx.Panel):
         self.notebook.AddPage(notebook_daw, "DAW")
 
         # Application Settings Section
-        notebook_application = wx.Window(self.notebook)
+        notebook_application = wx.Panel(self.notebook)
         notebook_application_sizer = wx.BoxSizer(wx.VERTICAL)
         app_settings_section = wx.FlexGridSizer(
             2, INTERNAL_SPACING_NEW, INTERNAL_SPACING_NEW
@@ -669,7 +669,7 @@ class PrefsPanel(wx.Panel):
             # Automatically check for updates
             app_settings_section.AddStretchSpacer()
             self.automatically_check_checkbox = wx.CheckBox(
-                self, label="Automatically check for updates"
+                notebook_application, label="Automatically check for updates"
             )
             self.automatically_check_checkbox.SetValue(
                 self.updater.automatically_checks_for_updates
@@ -679,7 +679,7 @@ class PrefsPanel(wx.Panel):
             if self.updater.supports_auto_downloads:
                 app_settings_section.AddStretchSpacer()
                 self.automatically_download_checkbox = wx.CheckBox(
-                    self, label="Automatically download updates"
+                    notebook_application, label="Automatically download updates"
                 )
                 self.automatically_download_checkbox.SetValue(
                     self.updater.automatically_downloads_updates
@@ -703,7 +703,7 @@ class PrefsPanel(wx.Panel):
         self.notebook.AddPage(notebook_application, "Application")
 
         # External Control Section
-        notebook_external = wx.Window(self.notebook)
+        notebook_external = wx.Panel(self.notebook)
         notebook_external_sizer = wx.BoxSizer(wx.VERTICAL)
         external_control_section = wx.FlexGridSizer(
             2, INTERNAL_SPACING_NEW, INTERNAL_SPACING_NEW
@@ -810,7 +810,7 @@ class PrefsPanel(wx.Panel):
             self.repeater_panel is None
             and Feature.REPEATER in console.supported_features
         ):
-            self.repeater_panel = ConsoleRepeaterPane(self.notebook,self.port_font)
+            self.repeater_panel = ConsoleRepeaterPane(self.notebook, self.port_font)
             self.notebook.InsertPage(1, self.repeater_panel, "Repeater")
         elif (
             self.repeater_panel is not None
