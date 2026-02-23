@@ -94,6 +94,7 @@ class DawConsoleBridge:
         mmc_control_enabled,
         allow_loading_while_playing,
         cue_list_player,
+        initial_mode=settings.initial_mode,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
@@ -131,6 +132,7 @@ class DawConsoleBridge:
                 allow_loading_while_playing
             )
             updater["main"]["cue_list_player"] = str(cue_list_player)
+            updater["main"]["initial_mode"] = initial_mode.name
         except Exception as e:
             logger.error(f"Failed to update config file: {e}")
         with open(self._ini_path, "w") as file:

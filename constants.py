@@ -1,4 +1,4 @@
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 
 APPLICATION_NAME = "MarkerMatic"
 APPLICATION_NAME_LEGACY = "Digico-Reaper Link"
@@ -54,10 +54,26 @@ SPARKLE_WIN_X64_URL = f"{SPARKLE_BASE_URL}/win-x64-appcast.xml"
 SPARKLE_PUBLIC_ED_KEY = "Y6lCSD9GlDM0vOV2ZVVhNE1P9C4WDOPQeM0qzhuIRew="
 
 
-class PlaybackState(StrEnum):
-    RECORDING = "recording"
-    PLAYBACK_TRACK = "playback-track"
-    PLAYBACK_NO_TRACK = "playback-no-track"
+class ApplicationMode:
+    def __init__(self, osc: str, ui: str) -> None:
+        self.osc = osc
+        self.ui = ui
+
+    def __str__(self) -> str:
+        return self.ui
+
+
+class PlaybackState(Enum):
+    RECORDING = ApplicationMode("recording", "Recording")
+    PLAYBACK_TRACK = ApplicationMode("playback-track", "Playback Tracking")
+    PLAYBACK_NO_TRACK = ApplicationMode("playback-no-track", "Playback No Track")
+
+    def __str__(self) -> str:
+        return self.value.osc
+
+    @property
+    def ui(self) -> str:
+        return self.value.ui
 
 
 class TransportAction(StrEnum):

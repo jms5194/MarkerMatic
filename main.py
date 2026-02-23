@@ -3,7 +3,7 @@ import os.path
 import platform
 import threading
 import webbrowser
-from typing import Collection, Optional
+from typing import Optional
 
 import wx
 import wx.adv
@@ -230,25 +230,11 @@ class MainPanel(wx.Window):
 
         # Button grid for application mode
         mode_grid = wx.GridSizer(5, wx.Size(INTERNAL_SPACING, INTERNAL_SPACING))
-        self.mode_record_button = ui.NoBorderBitmapToggle(
-            self, playback_state=PlaybackState.RECORDING
-        )
-        self.mode_record_button.SetToolTip("Recording")
-        self.mode_playbacktracking_button = ui.NoBorderBitmapToggle(
-            self, playback_state=PlaybackState.PLAYBACK_TRACK
-        )
-        self.mode_playbacktracking_button.SetToolTip("Playback Tracking")
-        self.mode_playbacknotrack_button = ui.NoBorderBitmapToggle(
-            self, playback_state=PlaybackState.PLAYBACK_NO_TRACK
-        )
-        self.mode_playbacknotrack_button.SetToolTip("Playback No Track")
-        self._mode_buttons: Collection[ui.NoBorderBitmapToggle] = (
-            self.mode_record_button,
-            self.mode_playbacktracking_button,
-            self.mode_playbacknotrack_button,
-        )
-        for button in self._mode_buttons:
+        self._mode_buttons = list[ui.NoBorderBitmapToggle]()
+        for mode in PlaybackState.__members__:
+            button = ui.NoBorderBitmapToggle(self, PlaybackState[mode])
             mode_grid.Add(button, flag=wx.EXPAND)
+            self._mode_buttons.append(button)
 
         marker_button = ui.NoBorderBitmapButton(self, icon="marker")
         marker_button.SetToolTip("Drop Marker")
@@ -327,7 +313,7 @@ class MainPanel(wx.Window):
                 button,
             )
         # Set Playback Tracking as the default state
-        self.mode_playbacktracking_button.SetValue(True)
+        self.update_playback_state(settings.initial_mode)
         # Subscribing to the OSC response for console name to reset the timeout timer
         pub.subscribe(self.console_connected, PyPubSubTopics.CONSOLE_CONNECTED)
         pub.subscribe(
@@ -658,6 +644,21 @@ class PrefsPanel(wx.Panel):
         app_settings_section.Add(
             self.allow_loading_while_playing_checkbox, flag=wx.EXPAND
         )
+        # Initial Mode
+        app_settings_section.Add(
+            wx.StaticText(
+                notebook_application, label="Initial Mode:", style=wx.ALIGN_RIGHT
+            )
+        )
+        modes = [PlaybackState[x].ui for x in PlaybackState.__members__]
+        self.initial_mode_choice = wx.Choice(notebook_application, choices=modes)
+        try:
+            self.initial_mode_choice.SetSelection(modes.index(settings.initial_mode.ui))
+        except ValueError:
+            logger.error("Tried to load a initial mode that isn't available")
+        app_settings_section.Add(
+            self.initial_mode_choice, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
+        )
         # Always On Top
         app_settings_section.Add(width=-1, height=-1)
         self.always_on_top_checkbox = wx.CheckBox(
@@ -878,6 +879,11 @@ class PrefsPanel(wx.Panel):
                 self.console_cue_list_player_control.GetValue()
             )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
+            settings.initial_mode = [
+                PlaybackState[x]
+                for x in PlaybackState.__members__
+                if PlaybackState[x].ui == self.initial_mode_choice.GetStringSelection()
+            ][0]
             settings.external_control_osc_port = int(
                 self.external_control_osc_port_control.GetValue()
             )
@@ -907,6 +913,7 @@ class PrefsPanel(wx.Panel):
                 mmc_control_enabled=settings.mmc_control_enabled,
                 allow_loading_while_playing=settings.allow_loading_while_playing,
                 cue_list_player=settings.cue_list_player,
+                initial_mode=settings.initial_mode,
             )
             MainWindow.BridgeFunctions.shutdown_and_restart_servers()
             # Close the preferences window when update is pressed.
