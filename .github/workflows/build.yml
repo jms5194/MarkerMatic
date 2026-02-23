@@ -64,6 +64,7 @@ jobs:
         run: |
           python - pip install --upgrade pip
           arch -${{ matrix.arch }} python -m pip install -r requirements.txt
+          arch -${{ matrix.arch }} python -m pip install -r requirements-fork.txt
           arch -${{ matrix.arch }} python -m pip install -r requirements-dev.txt
       # Bring in our apple certificate to the keychain of the runner
       - name: Import Apple Certificate
