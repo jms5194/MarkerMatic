@@ -23,6 +23,7 @@ class ThreadSafeSettings:
             "receive_port": 8000,
             "forwarder_enabled": False,
             "initial_mode": constants.PlaybackState.PLAYBACK_TRACK,
+            "macros_enabled": True,
             "marker_mode": constants.PlaybackState.PLAYBACK_TRACK,
             "window_loc": (400, 222),
             "name_only_match": False,
@@ -153,6 +154,16 @@ class ThreadSafeSettings:
     def initial_mode(self, value: constants.PlaybackState):
         with self._lock:
             self._settings["initial_mode"] = value
+
+    @property
+    def macros_enabled(self) -> bool:
+        with self._lock:
+            return self._settings["macros_enabled"]
+
+    @macros_enabled.setter
+    def macros_enabled(self, value):
+        with self._lock:
+            self._settings["macros_enabled"] = value
 
     @property
     def marker_mode(self) -> constants.PlaybackState:
@@ -313,6 +324,7 @@ class ThreadSafeSettings:
                 "always_on_top": "always_on_top",
                 "mmc_control_enabled": "mmc_control_enabled",
                 "allow_loading_while_playing": "allow_loading_while_playing",
+                "macros_enabled": "macros_enabled",
             }
             for settings_name, config_name in boolean_properties.items():
                 self._settings[settings_name] = config.getboolean(

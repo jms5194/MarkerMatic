@@ -583,7 +583,7 @@ class PrefsPanel(wx.Panel):
 
         # Cue List Player
         console_cue_list_player_label = wx.StaticText(
-            notebook_console, label="Cue List Player:", style=wx.ALIGN_RIGHT
+            notebook_console, label="Cue list player:", style=wx.ALIGN_RIGHT
         )
         console_main_section.Add(console_cue_list_player_label)
         self.console_cue_list_player_control = wx.TextCtrl(
@@ -728,7 +728,13 @@ class PrefsPanel(wx.Panel):
         self.external_control_osc_port_control.SetValue(
             str(settings.external_control_osc_port)
         )
-
+        # Macros enabled
+        external_control_section.Add(width=-1, height=-1)
+        self.macros_enabled_checkbox = wx.CheckBox(
+            notebook_external, label="Macros enabled"
+        )
+        self.macros_enabled_checkbox.SetValue(settings.macros_enabled)
+        external_control_section.Add(self.macros_enabled_checkbox, flag=wx.EXPAND)
         # External Control Midi Port
         external_control_section.Add(
             wx.StaticText(notebook_external, label="MIDI port:", style=wx.ALIGN_RIGHT)
@@ -744,6 +750,7 @@ class PrefsPanel(wx.Panel):
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
         )
+        # MMC enabled
         external_control_section.Add(width=-1, height=-1)
         self.mmc_control_enabled_checkbox = wx.CheckBox(
             notebook_external, label="MMC enabled"
@@ -840,6 +847,11 @@ class PrefsPanel(wx.Panel):
         self.console_cue_list_player_control.Enabled = (
             Feature.CUE_LIST_PLAYER in console.supported_features
         )
+        self.macros_enabled_checkbox.Enabled = (
+            Feature.MACROS in console.supported_features
+        )
+        if Feature.MACROS not in console.supported_features:
+            self.macros_enabled_checkbox.SetValue(False)
 
     def changed_daw_type(self, event: wx.CommandEvent) -> None:
         self.daw: Daw = DAWS[event.GetString()]

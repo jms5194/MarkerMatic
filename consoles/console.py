@@ -1,5 +1,5 @@
 import threading
-from enum import Enum
+from enum import IntEnum, auto
 from typing import Callable, List, Optional
 
 from pubsub import pub
@@ -7,11 +7,12 @@ from pubsub import pub
 from constants import PyPubSubTopics
 
 
-class Feature(Enum):
-    CUE_NUMBER = 1
-    REPEATER = 2
-    SEPERATE_RECEIVE_PORT = 3
-    CUE_LIST_PLAYER = 4
+class Feature(IntEnum):
+    CUE_NUMBER = auto()
+    REPEATER = auto()
+    SEPERATE_RECEIVE_PORT = auto()
+    CUE_LIST_PLAYER = auto()
+    MACROS = auto()
 
 
 class Console:
