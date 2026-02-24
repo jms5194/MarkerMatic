@@ -491,7 +491,6 @@ class PrefsPanel(wx.Panel):
     def __init__(self, parent, console: Console, daw: Daw, updater: updates.Updater):
         logger.info("Creating PrefsPanel")
         wx.Panel.__init__(self, parent)
-        self.repeater_panel: Optional[ConsoleRepeaterPane] = None
         self.updater = updater
         # Define Fonts:
         self.ip_inspected = False
@@ -596,8 +595,20 @@ class PrefsPanel(wx.Panel):
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
         )
 
+        # Macros enabled
+        console_main_section.Add(width=-1, height=-1)
+        self.macros_enabled_checkbox = wx.CheckBox(
+            notebook_console, label="Macros enabled"
+        )
+        self.macros_enabled_checkbox.SetValue(settings.macros_enabled)
+        console_main_section.Add(self.macros_enabled_checkbox, flag=wx.EXPAND)
+
         notebook_console.SetSizerAndFit(notebook_console_sizer)
         self.notebook.AddPage(notebook_console, "Console")
+
+        # Repeater panel
+        self.repeater_panel = ConsoleRepeaterPane(self.notebook, self.port_font)
+        self.notebook.AddPage(self.repeater_panel, "Repeater")
 
         # DAW Section
         notebook_daw = wx.Panel(self.notebook)
@@ -728,13 +739,7 @@ class PrefsPanel(wx.Panel):
         self.external_control_osc_port_control.SetValue(
             str(settings.external_control_osc_port)
         )
-        # Macros enabled
-        external_control_section.Add(width=-1, height=-1)
-        self.macros_enabled_checkbox = wx.CheckBox(
-            notebook_external, label="Macros enabled"
-        )
-        self.macros_enabled_checkbox.SetValue(settings.macros_enabled)
-        external_control_section.Add(self.macros_enabled_checkbox, flag=wx.EXPAND)
+
         # External Control Midi Port
         external_control_section.Add(
             wx.StaticText(notebook_external, label="MIDI port:", style=wx.ALIGN_RIGHT)
@@ -814,19 +819,7 @@ class PrefsPanel(wx.Panel):
         self.match_mode_label_only.Enabled = (
             Feature.CUE_NUMBER in console.supported_features
         )
-        if (
-            self.repeater_panel is None
-            and Feature.REPEATER in console.supported_features
-        ):
-            self.repeater_panel = ConsoleRepeaterPane(self.notebook, self.port_font)
-            self.notebook.InsertPage(1, self.repeater_panel, "Repeater")
-        elif (
-            self.repeater_panel is not None
-            and Feature.REPEATER not in console.supported_features
-        ):
-            self.notebook.RemovePage(self.notebook.FindPage(self.repeater_panel))
-            self.repeater_panel.Destroy()
-            self.repeater_panel = None
+        self.repeater_panel.update_console_supported_features(console)
         if Feature.CUE_NUMBER not in console.supported_features:
             self.match_mode_label_only.SetValue(False)
         if console.fixed_send_port is None:
@@ -1067,12 +1060,23 @@ class ConsoleRepeaterPane(wx.Panel):
             self.update_repeater_fields,
         )
         self.SetSizerAndFit(repeater_sizer)
+
+    def update_console_supported_features(self, console: Console) -> None:
+        """Updates the availability of repeater options based on the selected
+        console type. Must be called at least once before the panel is shown"""
+        self.repeater_radio_enabled.Enabled = (
+            Feature.REPEATER in console.supported_features
+        )
+        if Feature.REPEATER not in console.supported_features:
+            self.repeater_radio_enabled.SetValue(False)
         self.update_repeater_fields()
 
     def update_repeater_fields(
         self,
         _event: Optional[wx.CommandEvent] = None,
     ) -> None:
+        """Updates the availability of the repeater options based on the
+        Repeater enabled checkbox's state"""
         repeater_enabled = self.repeater_radio_enabled.IsChecked()
         for control in (
             self.ip_control,
