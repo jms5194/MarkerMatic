@@ -237,7 +237,7 @@ class ProTools(Daw):
                 for track in all_tracks:
                     if track.type == 1 or track.type == 2:
                         track_names.append(track.name)
-                self.pt_engine_connection.set_track_record_enable(
+                self.pt_engine_connection.set_track_record_enable_state(
                     *track_names, new_state=True
                 )
             except grpc._channel._InactiveRpcError:
@@ -255,7 +255,7 @@ class ProTools(Daw):
                 for track in all_tracks:
                     if track.type == 1 or track.type == 2:
                         track_names.append(track.name)
-                self.pt_engine_connection.set_track_record_enable(
+                self.pt_engine_connection.set_track_record_enable_state(
                     *track_names, new_state=False
                 )
             except grpc._channel._InactiveRpcError:
