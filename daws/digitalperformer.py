@@ -159,7 +159,10 @@ class DigitalPerformer(Daw):
             max_length = 36
             test_name = args[i]
             # Remove the timestamp at the end of the name that DP returns
-            test_name = test_name[:-9]
+            test_list = test_name.split("\t")
+            test_name = test_list[0]
+            test_name = test_name[:max_length]
+
             if not test_name.startswith(tuple(self.markers_to_ignore)):
                 if settings.name_only_match:
                     try:
