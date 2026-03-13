@@ -33,5 +33,5 @@ __all__ = [
     "Yamaha",
     "Nadia",
     "DMitri",
-    "QLab 5"
+    "QLab",
 ]
