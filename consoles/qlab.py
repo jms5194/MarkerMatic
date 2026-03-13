@@ -37,6 +37,7 @@ class QLab(Console):
 
     def _console_client_thread(self) -> None:
         from app_settings import settings
+
         self._client = udp_client.SimpleUDPClient(
             settings.console_ip, self.fixed_send_port
         )
@@ -61,7 +62,9 @@ class QLab(Console):
         self._qlab_dispatcher.map("/reply/thump", self._subscribe_ok_received)
         self._qlab_dispatcher.map("/reply/cue_id/*/number", self._cue_number_received)
         self._qlab_dispatcher.map("/reply/cue_id/*/name", self._cue_name_received)
-        self._qlab_dispatcher.map("/qlab/event/workspace/go/uniqueID", self._cue_uniqueID_received)
+        self._qlab_dispatcher.map(
+            "/qlab/event/workspace/go/uniqueID", self._cue_uniqueID_received
+        )
         self._qlab_dispatcher.set_default_handler(self._message_received)
 
     def _subscribe_ok_received(self, _address: str, _expires_seconds: int) -> None:
@@ -70,9 +73,7 @@ class QLab(Console):
     def _subscribe_fail_received(self, _address: str) -> None:
         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
 
-    def _cue_uniqueID_received(
-        self, _address: str, cue_uniqueID: str
-    ) -> None:
+    def _cue_uniqueID_received(self, _address: str, cue_uniqueID: str) -> None:
         self._cue_uniqueID = cue_uniqueID
         self._new_uniqueID_received.set()
         with self.console_send_lock:
@@ -87,10 +88,15 @@ class QLab(Console):
                 cue_number = json.loads(cue_number_json)
                 cue_number = cue_number["data"]
                 # Force the incoming cue number to be ascii characters only
-                cue_number = cue_number.encode(encoding="ascii", errors="ignore").decode("ascii")
+                cue_number = cue_number.encode(
+                    encoding="ascii", errors="ignore"
+                ).decode("ascii")
                 self._cue_number = cue_number
                 self._new_cuenumber_received.set()
-                if self._new_cuename_received.is_set() and self._new_cuename_received.is_set():
+                if (
+                    self._new_cuename_received.is_set()
+                    and self._new_cuename_received.is_set()
+                ):
                     self._handle_cue_load(self._cue_number, self._cue_name)
 
     def _cue_name_received(self, _address: str, cue_name_json: str) -> None:
@@ -100,10 +106,15 @@ class QLab(Console):
                 cue_name = json.loads(cue_name_json)
                 cue_name = cue_name["data"]
                 # Force the incoming cue name to be ascii characters only
-                cue_name = cue_name.encode(encoding="ascii", errors="ignore").decode("ascii")
+                cue_name = cue_name.encode(encoding="ascii", errors="ignore").decode(
+                    "ascii"
+                )
                 self._cue_name = cue_name
                 self._new_cuename_received.set()
-                if self._new_cuenumber_received.is_set() and self._new_cuename_received.is_set():
+                if (
+                    self._new_cuenumber_received.is_set()
+                    and self._new_cuename_received.is_set()
+                ):
                     self._handle_cue_load(self._cue_number, self._cue_name)
 
     def _handle_cue_load(self, cue_number: str, cue_name: str) -> None:

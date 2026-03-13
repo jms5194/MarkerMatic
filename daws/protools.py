@@ -100,7 +100,7 @@ class ProTools(Daw):
                 print(f"Creating marker: {marker_name}")
                 self.pt_engine_connection.create_memory_location(
                     memory_number=-1,
-                    start_time= "cur_pos",
+                    start_time="cur_pos",
                     name=marker_name,
                     location="MLC_MainRuler",
                 )
