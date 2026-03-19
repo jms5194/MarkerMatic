@@ -117,6 +117,10 @@ jobs:
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$libfile"
           done
+          find "MarkerMatic.app/Contents/MacOS" -type f -perm +111 | while read exe; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+            --options runtime --timestamp --force "$exe"
+          done
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../entitlements.plist \
             --options runtime --timestamp --force "MarkerMatic.app" 
