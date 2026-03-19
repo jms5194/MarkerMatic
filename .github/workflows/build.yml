@@ -187,7 +187,16 @@ jobs:
           xcrun notarytool submit "MarkerMatic Installer-${{ matrix.os }}.dmg" --apple-id \
             "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
             "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
-            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
+            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose 2>&1 | tee notarize_output.txt
+
+            SUBMISSION_ID=$(grep "id:" notarize_output.txt | head -1 | awk '{print $2}')
+            echo "Fetching notarization log for submission: $SUBMISSION_ID"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "${{ secrets.APPLE_DEVELOPER_ID_USER }}" \
+              --password "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" \
+              --team-id "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" \
+              notarize_log.json
+            cat notarize_log.json
           xcrun stapler staple "MarkerMatic Installer-${{ matrix.os }}.dmg"
 
       - name: Verify notarization
