@@ -105,6 +105,15 @@ jobs:
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
 
+      - name: Diagnose MacOS directory
+        run: |
+          echo "=== Contents/MacOS/ ==="
+          ls -la dist/MarkerMatic.app/Contents/MacOS/
+          echo "=== Symlink target ==="
+          readlink -f dist/MarkerMatic.app/Contents/MacOS/python || echo "Not a symlink"
+          echo "=== file type ==="
+          file dist/MarkerMatic.app/Contents/MacOS/python
+
       - name: Sign application
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
