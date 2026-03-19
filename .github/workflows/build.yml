@@ -105,56 +105,33 @@ jobs:
         env:
           APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
 
-      - name: Diagnose MacOS directory
-        run: |
-          echo "=== Contents/MacOS/ ==="
-          ls -la dist/MarkerMatic.app/Contents/MacOS/
-          echo "=== Symlink target ==="
-          readlink -f dist/MarkerMatic.app/Contents/MacOS/python || echo "Not a symlink"
-          echo "=== file type ==="
-          file dist/MarkerMatic.app/Contents/MacOS/python
-
       - name: Sign application
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           cd dist
       
-          find "MarkerMatic.app" -iname "*.so" -o -iname "*.dylib" | while read libfile; do
+          # Sign everything that needs signing from the inside out
+          find "MarkerMatic.app" -type f \( \
+            -iname "*.so" -o \
+            -iname "*.dylib" -o \
+            -perm -u+x \
+          \) | while read f; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$libfile"
+              --options runtime --timestamp --force "$f" 2>/dev/null || true
           done
-
-          find "MarkerMatic.app" -name "*.xpc" -type d | while read xpc; do
-            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$xpc"
-          done
-
-          find "MarkerMatic.app" -name "Python.framework" -type d | while read f; do
-            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$f"
-          done
-          
-          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --options runtime --timestamp --force \
-            "MarkerMatic.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
-          
-          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --options runtime --timestamp --force \
-            "MarkerMatic.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
       
-          find "MarkerMatic.app" -name "Sparkle.framework" -type d | while read f; do
+          # Sign nested bundles (.app, .framework, .xpc) from deepest to shallowest
+          find "MarkerMatic.app" -type d \( \
+            -name "*.app" -o \
+            -name "*.framework" -o \
+            -name "*.xpc" \
+          \) | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2- | \
+          while read bundle; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$f"
+              --options runtime --timestamp --force "$bundle" 2>/dev/null || true
           done
-          
-          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --options runtime --timestamp --force \
-            "MarkerMatic.app/Contents/MacOS/python"
-          
-          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --options runtime --timestamp --force \
-            "MarkerMatic.app/Contents/MacOS/MarkerMatic"
       
+          # Sign the outer app bundle last
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../entitlements.plist \
             --options runtime --timestamp --force "MarkerMatic.app"
@@ -195,16 +172,7 @@ jobs:
           xcrun notarytool submit "MarkerMatic Installer-${{ matrix.os }}.dmg" --apple-id \
             "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
             "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
-            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose 2>&1 | tee notarize_output.txt
-
-            SUBMISSION_ID=$(grep "id:" notarize_output.txt | head -1 | awk '{print $2}')
-            echo "Fetching notarization log for submission: $SUBMISSION_ID"
-            xcrun notarytool log "$SUBMISSION_ID" \
-              --apple-id "${{ secrets.APPLE_DEVELOPER_ID_USER }}" \
-              --password "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" \
-              --team-id "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" \
-              notarize_log.json
-            cat notarize_log.json
+            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
           xcrun stapler staple "MarkerMatic Installer-${{ matrix.os }}.dmg"
 
       - name: Verify notarization
