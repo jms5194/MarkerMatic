@@ -40,16 +40,15 @@ jobs:
     strategy:
       matrix:
         # Building for Mac Intel, Mac ARM
-        os: [macos-x86, macos-arm64]
         include:
           - os: macos-x86
-            setup-python-arch: x64
+            runner: macos-15-intel
             arch: x86_64
           - os: macos-arm64
-            setup-python-arch: arm64
+            runner: macos-latest
             arch: arm64
     # macos-latest is ARM for macOS >= 14
-    runs-on: macos-latest
+    runs-on: ${{matrix.runner}}
 
     steps:
       # Checkout the project from Github
@@ -57,12 +56,10 @@ jobs:
       # Get python installed on the runner
       - name: Set up Python
         uses: actions/setup-python@v5
-        with:
-          architecture: ${{ matrix.setup-python-arch }}
       # Upgrade Pip and install dependencies
       - name: Install dependencies
         run: |
-          python - pip install --upgrade pip
+          python -m pip install --upgrade pip
           arch -${{ matrix.arch }} python -m pip install -r requirements.txt
           arch -${{ matrix.arch }} python -m pip install -r requirements-fork.txt
           arch -${{ matrix.arch }} python -m pip install -r requirements-dev.txt
@@ -112,16 +109,17 @@ jobs:
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           cd dist
-          find "MarkerMatic.app" -iname '*.so' -or -iname '*.dylib' |
-          while read libfile; do
-            codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
+          find "MarkerMatic.app" -name "*.framework" -type d | while read f; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+              --options runtime --timestamp --force "$f"
+          done
+          find "MarkerMatic.app" -iname "*.so" -or -iname "*.dylib" | while read libfile; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+              --options runtime --timestamp --force "$libfile"
+          done
+          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../entitlements.plist \
-            --deep "${libfile}" \
-            --force \
-            --timestamp \
-            --options runtime;
-          done;
-          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --deep --force --entitlements "../entitlements.plist" --options runtime --timestamp  "MarkerMatic.app" 
+            --options runtime --timestamp --force "MarkerMatic.app" 
           codesign --verify --verbose=4 "MarkerMatic.app"
           chmod 755 MarkerMatic.app
 
@@ -151,7 +149,7 @@ jobs:
 
       - name: Sign DMG
         run: |
-          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" -i com.justinstasiw.markermatic.dmg --timestamp --force "MarkerMatic Installer"-${{ matrix.os }}.dmg
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" --timestamp --force "MarkerMatic Installer"-${{ matrix.os }}.dmg
 
       - name: Notarize and staple
         run: |
