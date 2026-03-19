@@ -109,21 +109,36 @@ jobs:
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           cd dist
-          find "MarkerMatic.app" -name "*.framework" -type d | while read f; do
-            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$f"
-          done
-          find "MarkerMatic.app" -iname "*.so" -or -iname "*.dylib" | while read libfile; do
+      
+          find "MarkerMatic.app" -iname "*.so" -o -iname "*.dylib" | while read libfile; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$libfile"
           done
-          find "MarkerMatic.app/Contents/MacOS" -type f -perm +111 | while read exe; do
+
+          find "MarkerMatic.app" -name "*.xpc" -type d | while read xpc; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --options runtime --timestamp --force "$exe"
+              --options runtime --timestamp --force "$xpc"
           done
+
+          find "MarkerMatic.app" -path "*/Python.framework/Versions/*/Python" -type f | while read f; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+              --options runtime --timestamp --force "$f"
+          done
+
+          find "MarkerMatic.app" -name "Python.framework" -type d | while read f; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+              --options runtime --timestamp --force "$f"
+          done
+      
+          find "MarkerMatic.app" -name "Sparkle.framework" -type d | while read f; do
+            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+              --options runtime --timestamp --force "$f"
+          done
+      
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../entitlements.plist \
-            --options runtime --timestamp --force "MarkerMatic.app" 
+            --options runtime --timestamp --force "MarkerMatic.app"
+      
           codesign --verify --verbose=4 "MarkerMatic.app"
           chmod 755 MarkerMatic.app
 
