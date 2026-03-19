@@ -104,6 +104,7 @@ if not (constants.WXPYTHON_USE_NATIVE_BUTTONS or os.getenv("UGLY_MODE")):
             super().__init__(
                 parent, playback_state, icon, id, pos, size, style, validator, name
             )
+            self.SetToolTip(playback_state.ui)
 
     class MarkerMaticButtonEvent(wx.lib.buttons.GenButtonEvent):
         def IsChecked(self) -> bool:

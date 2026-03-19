@@ -8,14 +8,15 @@ from py4j.java_gateway import JavaGateway
 from py4j.protocol import Py4JError, Py4JJavaError, Py4JNetworkError
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
-from . import Daw, configure_bitwig
+from . import Daw, configure_bitwig, DawFeature
 
 
 class Bitwig(Daw):
     type = "Bitwig Studio"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()
@@ -33,6 +34,7 @@ class Bitwig(Daw):
         pub.subscribe(
             self._shutdown_or_restart_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS
         )
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -73,6 +75,7 @@ class Bitwig(Daw):
                 self.bitwig_transport = self.gateway_entry_point.getTransport()
                 self.bitwig_arranger = self.gateway_entry_point.getArranger()
                 self.bitwig_cuemarkerbank = self.gateway_entry_point.getCueMarkerBank()
+                self.bitwig_trackbank = self.gateway_entry_point.getTrackBank()
                 self._build_marker_dict()
                 self._shutdown_or_restart_server_event.wait()
             except Exception:
@@ -89,6 +92,15 @@ class Bitwig(Daw):
                 self._bitwig_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._bitwig_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._bitwig_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing armed macros: {e}")
 
     def _build_marker_dict(self) -> None:
         try:
@@ -124,8 +136,13 @@ class Bitwig(Daw):
             logger.error("Lost Connection to Bitwig. Attempting reconnect")
             self._bitwig_reconnect_attempt()
 
-    def _place_marker_with_name(self, marker_name: str) -> None:
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         # Bitwig markers can only be placed on a bar/beat reference, so will never be 100% accurate
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         try:
             cur_marker_qty = self.bitwig_cuemarkerbank.itemCount().get()
             self.bitwig_transport.addCueMarkerAtPlaybackPosition()
@@ -247,6 +264,36 @@ class Bitwig(Daw):
     def _bitwig_stop(self) -> None:
         try:
             self.bitwig_transport.stop()
+        except (
+            AttributeError,
+            Py4JError,
+            Py4JNetworkError,
+            Py4JJavaError,
+            ConnectionRefusedError,
+            IndexError,
+        ):
+            logger.error("Lost Connection to Bitwig. Attempting reconnect")
+            self._bitwig_reconnect_attempt()
+
+    def _bitwig_arm_all(self) -> None:
+        logger.info("arming bitwig tracks")
+        try:
+            self.gateway_entry_point.armAllTracks(self.bitwig_trackbank)
+        except (
+            AttributeError,
+            Py4JError,
+            Py4JNetworkError,
+            Py4JJavaError,
+            ConnectionRefusedError,
+            IndexError,
+        ):
+            logger.error("Lost Connection to Bitwig. Attempting reconnect")
+            self._bitwig_reconnect_attempt()
+
+    def _bitwig_disarm_all(self) -> None:
+        logger.info("disarming bitwig tracks")
+        try:
+            self.gateway_entry_point.disarmAllTracks(self.bitwig_trackbank)
         except (
             AttributeError,
             Py4JError,

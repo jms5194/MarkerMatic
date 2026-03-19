@@ -1,0 +1,2 @@
+--index-url https://scm.gruezi.net/api/packages/MarkerMatic/pypi/simple/
+pywinsparkle; sys_platform == "win32"

@@ -10,7 +10,7 @@ from pythonosc.osc_server import ThreadingOSCUDPServer
 
 import external_control
 import utilities
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Console, Feature
@@ -75,6 +75,7 @@ class DiGiCo(Console):
         Feature.CUE_NUMBER,
         Feature.REPEATER,
         Feature.SEPERATE_RECEIVE_PORT,
+        Feature.MACROS,
     ]
 
     def __init__(self):
@@ -107,7 +108,7 @@ class DiGiCo(Console):
             settings.console_ip, settings.console_port
         )
         self.digico_dispatcher = dispatcher.Dispatcher()
-        self._receive_console_OSC()
+        self._receive_console_OSC(macros_enabled=settings.macros_enabled)
         try:
             self.digico_osc_server = osc_server.ThreadingOSCUDPServer(
                 (
@@ -148,14 +149,17 @@ class DiGiCo(Console):
 
     # Digico Functions
 
-    def _receive_console_OSC(self) -> None:
-        # Receives and distributes OSC from Digico, based on matching OSC values
+    def _receive_console_OSC(self, macros_enabled=True) -> None:
+        """Receives and distributes OSC from Digico, based on matching OSC values"""
         self.digico_dispatcher.map(
             "/Snapshots/Recall_Snapshot/*", self._request_snapshot_info
         )
         self.digico_dispatcher.map("/Snapshots/name", self.snapshot_OSC_handler)
-        self.digico_dispatcher.map("/Macros/Recall_Macro/*", self._request_macro_info)
-        self.digico_dispatcher.map("/Macros/name", self._macro_name_handler)
+        if macros_enabled:
+            self.digico_dispatcher.map(
+                "/Macros/Recall_Macro/*", self._request_macro_info
+            )
+            self.digico_dispatcher.map("/Macros/name", self._macro_name_handler)
         self.digico_dispatcher.map("/Console/Name", self._console_name_handler)
         external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
         self.digico_dispatcher.set_default_handler(self._forward_OSC)
@@ -304,6 +308,34 @@ class DiGiCo(Console):
                     pub.sendMessage(
                         PyPubSubTopics.CHANGE_PLAYBACK_STATE,
                         selected_mode=PlaybackState.PLAYBACK_NO_TRACK,
+                    )
+                elif macro_name in (
+                    "reaper, arm_all",
+                    "reaper, arm",
+                    "reaper arm_all",
+                    "reaper arm",
+                    "arm, all",
+                    "arm,all",
+                    "arm all",
+                    "arm",
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.ARMED_ACTION,
+                        armed_action=ArmedAction.ARM_ALL,
+                    )
+                elif macro_name in (
+                    "reaper, disarm_all",
+                    "reaper, disarm",
+                    "reaper disarm_all",
+                    "reaper disarm",
+                    "disarm, all",
+                    "disarm,all",
+                    "disarm all",
+                    "disarm",
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.ARMED_ACTION,
+                        armed_action=ArmedAction.DISARM_ALL,
                     )
             self.requested_macro_num = None
 

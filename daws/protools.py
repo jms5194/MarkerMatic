@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 import grpc
 import grpc._channel
@@ -10,14 +10,15 @@ from ptsl import PTSL_pb2 as pt
 from pubsub import pub
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
-from . import Daw
+from . import Daw, DawFeature
 
 
 class ProTools(Daw):
     type = "ProTools"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()
@@ -32,6 +33,7 @@ class ProTools(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -78,19 +80,52 @@ class ProTools(Daw):
             with self.pt_send_lock:
                 self.pt_engine_connection = None
 
+    @overload
     def _place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         with self.pt_send_lock:
             assert self.pt_engine_connection
             try:
+                print(f"Creating marker: {marker_name}")
                 self.pt_engine_connection.create_memory_location(
                     memory_number=-1,
-                    start_time="current_pos",
+                    start_time="cur_pos",
                     name=marker_name,
                     location="MLC_MainRuler",
                 )
                 # -1 seems to be a magic number for the next available memory_number.
-                # Start_time as current_pos is a hacky way to get it to drop where the playhead is- but throws an error.
-                # There must be a constant to put here that doesn't throw the error.
+            except ptsl.errors.CommandError as e:
+                if e.error_type == pt.PT_InvalidParameter:
+                    logger.error("Bad parameter input to create_memory_location")
+            except grpc._channel._InactiveRpcError:
+                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            try:
+                all_memory_locs = self.pt_engine_connection.get_memory_locations()
+                last_memory_loc = all_memory_locs[-1]
+                if last_memory_loc.name != marker_name:
+                    self.pt_engine_connection.edit_memory_location(
+                        location_number=last_memory_loc.number,
+                        name=marker_name,
+                        start_time=last_memory_loc.start_time,
+                        end_time=last_memory_loc.end_time,
+                        time_properties=last_memory_loc.time_properties,
+                        reference=last_memory_loc.reference,
+                        general_properties=last_memory_loc.general_properties,
+                        comments=last_memory_loc.comments,
+                    )
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
@@ -110,6 +145,15 @@ class ProTools(Daw):
                 self._pro_tools_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._pro_tools_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._pro_tools_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing arming macros: {e}")
 
     def _handle_cue_load(self, cue: str) -> None:
         # Receives cue information from console and actions based on software mode
@@ -182,6 +226,42 @@ class ProTools(Daw):
                 pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
+
+    def _pro_tools_arm_all(self) -> None:
+        print("Arming all tracks")
+        with self.pt_send_lock:
+            assert self.pt_engine_connection
+            try:
+                all_tracks = self.pt_engine_connection.track_list()
+                track_names = []
+                for track in all_tracks:
+                    if track.type == 1 or track.type == 2:
+                        track_names.append(track.name)
+                self.pt_engine_connection.set_track_record_enable_state(
+                    *track_names, new_state=True
+                )
+            except grpc._channel._InactiveRpcError:
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            return None
+
+    def _pro_tools_disarm_all(self) -> None:
+        print("Disarming all tracks")
+        with self.pt_send_lock:
+            assert self.pt_engine_connection
+            try:
+                all_tracks = self.pt_engine_connection.track_list()
+                track_names = []
+                for track in all_tracks:
+                    if track.type == 1 or track.type == 2:
+                        track_names.append(track.name)
+                self.pt_engine_connection.set_track_record_enable_state(
+                    *track_names, new_state=False
+                )
+            except grpc._channel._InactiveRpcError:
+                logger.error("Pro Tools connection lost, Retrying connection")
+                self._open_protools_connection()
+            return None
 
     def _pro_tools_play(self):
         # Since Pro Tools only has a toggle of play state, additional logic is here to validate the toggle to the

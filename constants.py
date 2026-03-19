@@ -1,4 +1,4 @@
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 
 APPLICATION_NAME = "MarkerMatic"
 APPLICATION_NAME_LEGACY = "Digico-Reaper Link"
@@ -6,16 +6,16 @@ APPLICATION_AUTHOR = "Justin Stasiw"
 APPLICATION_DESCRIPTION = (
     "A tool to automate cueing and marker placement between consoles and DAWs"
 )
-APPLICATION_COPYRIGHT = "© 2025 Justin Stasiw and Liam Steckler"
+APPLICATION_COPYRIGHT = "© 2026 Justin Stasiw and Liam Steckler"
 BUNDLE_IDENTIFIER = "com.justinstasiw.markermatic"
 CONFIG_FILENAME = "settings.ini"
 CONFIG_FILENAME_LEGACY = "settingsV3.ini"
 ICON_MAC_FILENAME = "markermaticicon.icns"
 ICON_WIN_FILENAME = "markermaticicon.ico"
 LOG_FILENAME = "MarkerMatic.log"
-VERSION = "4.3.0 (Build 1021)"
-VERSION_EXTRA = "4.3.0.1021"
-VERSION_SHORT = "4.3.0"
+VERSION = "4.4.0 (Build 1025)"
+VERSION_EXTRA = "4.4.0.1025"
+VERSION_SHORT = "4.4.0"
 WEBSITE = "https://markermatic.com"
 WEBSITE_DOCUMENTATION = "https://markermatic.com/docs"
 WEBSITE_LICENSE = "https://markermatic.com/license"
@@ -54,16 +54,37 @@ SPARKLE_WIN_X64_URL = f"{SPARKLE_BASE_URL}/win-x64-appcast.xml"
 SPARKLE_PUBLIC_ED_KEY = "Y6lCSD9GlDM0vOV2ZVVhNE1P9C4WDOPQeM0qzhuIRew="
 
 
-class PlaybackState(StrEnum):
-    RECORDING = "recording"
-    PLAYBACK_TRACK = "playback-track"
-    PLAYBACK_NO_TRACK = "playback-no-track"
+class ApplicationMode:
+    def __init__(self, osc: str, ui: str) -> None:
+        self.osc = osc
+        self.ui = ui
+
+    def __str__(self) -> str:
+        return self.ui
+
+
+class PlaybackState(Enum):
+    RECORDING = ApplicationMode("recording", "Recording")
+    PLAYBACK_TRACK = ApplicationMode("playback-track", "Playback Tracking")
+    PLAYBACK_NO_TRACK = ApplicationMode("playback-no-track", "Playback No Track")
+
+    def __str__(self) -> str:
+        return self.value.osc
+
+    @property
+    def ui(self) -> str:
+        return self.value.ui
 
 
 class TransportAction(StrEnum):
     PLAY = "play"
     STOP = "stop"
     RECORD = "record"
+
+
+class ArmedAction(StrEnum):
+    ARM_ALL = "arm_all"
+    DISARM_ALL = "disarm_all"
 
 
 class PyPubSubTopics(StrEnum):
@@ -77,3 +98,4 @@ class PyPubSubTopics(StrEnum):
     PLACE_MARKER_WITH_NAME = auto()
     DAW_CONNECTION_STATUS = auto()
     TRANSPORT_ACTION = auto()
+    ARMED_ACTION = auto()

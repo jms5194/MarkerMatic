@@ -1,19 +1,20 @@
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, overload
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
-from . import Daw, configure_reaper
+from . import Daw, configure_reaper, DawFeature
 
 
 class Reaper(Daw):
     type = "Reaper"
+    supported_features = [DawFeature.NAME_ONLY_MATCH]
 
     def __init__(self):
         super().__init__()
@@ -30,12 +31,13 @@ class Reaper(Daw):
         self.is_recording = False
         self.reaper_osc_server = None
         pub.subscribe(
-            self.place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
+            self._place_marker_with_name, PyPubSubTopics.PLACE_MARKER_WITH_NAME
         )
         pub.subscribe(self._incoming_transport_action, PyPubSubTopics.TRANSPORT_ACTION)
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -212,10 +214,18 @@ class Reaper(Daw):
         if self.is_playing and settings.allow_loading_while_playing:
             self._reaper_play()
 
-    def place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+    @overload
+    def _place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
         if as_thread:
             threading.Thread(
-                target=self.place_marker_with_name, args=(marker_name, False)
+                target=self._place_marker_with_name, args=(marker_name, False)
             ).start()
             return
         logger.info(f"Placed marker for cue: {marker_name}")
@@ -253,31 +263,56 @@ class Reaper(Daw):
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
 
-    def _reaper_play(self) -> None:
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._reaper_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._reaper_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing arming macros: {e}")
+
+    def _reaper_arm_all(self) -> None:
         with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1007)
+            self.reaper_client.send_message("/action", 40490)
+            logger.info("Reaper has armed all tracks")
+
+    def _reaper_disarm_all(self) -> None:
+        with self.reaper_send_lock:
+            self.reaper_client.send_message("/action", 40491)
+            logger.info("Reaper has disarmed all tracks")
+
+    def _reaper_play(self) -> None:
+        if self.is_recording:
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/record", None)
+        if not self.is_playing:
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/play", None)
 
     def _reaper_stop(self) -> None:
         with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 1016)
+            self.reaper_client.send_message("/stop", None)
 
     def _reaper_rec(self) -> None:
         # Sends action to skip to end of project and then record, to prevent overwrites
         from app_settings import settings
 
-        settings.marker_mode = PlaybackState.RECORDING
-        pub.sendMessage(
-            PyPubSubTopics.CHANGE_PLAYBACK_STATE, selected_mode=PlaybackState.RECORDING
-        )
-        with self.reaper_send_lock:
-            self.reaper_client.send_message("/action", 40043)
-            self.reaper_client.send_message("/action", 1013)
+        if not self.is_recording:
+            settings.marker_mode = PlaybackState.RECORDING
+            pub.sendMessage(
+                PyPubSubTopics.CHANGE_PLAYBACK_STATE,
+                selected_mode=PlaybackState.RECORDING,
+            )
+            with self.reaper_send_lock:
+                self.reaper_client.send_message("/action", 40043)
+                self.reaper_client.send_message("/record", None)
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
 
         if settings.marker_mode is PlaybackState.RECORDING and self.is_recording:
-            self.place_marker_with_name(cue, False)
+            self._place_marker_with_name(cue, False)
         elif settings.marker_mode is PlaybackState.PLAYBACK_TRACK:
             self.get_marker_id_by_name(cue)
 

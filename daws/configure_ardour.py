@@ -6,6 +6,7 @@ import psutil
 import sys
 import xml.etree.ElementTree as ET
 import time
+import re
 
 
 def backup_config_file(config_file_path):
@@ -70,19 +71,20 @@ def get_resource_path(detect_portable_install):
 
 
 def get_candidate_directories(detect_portable_install):
+    process_path = get_ardour_process_path()
     if detect_portable_install:
-        yield get_portable_resource_directory()
+        yield get_portable_resource_directory(process_path)
+    short_version = os.path.basename(process_path)
     if is_apple():
-        yield os.path.expanduser("~/Library/Preferences/ardour8")
+        yield os.path.expanduser(f"~/Library/Preferences/{short_version}")
     elif is_windows():
-        yield os.path.expandvars(r"$LOCALAPPDATA\ardour8")
+        yield os.path.expandvars(f"$LOCALAPPDATA\\{short_version}")
     else:
-        yield os.path.expanduser("~/.config/ardour8")
+        yield os.path.expanduser(f"~/.config/{short_version}")
 
 
-def get_portable_resource_directory():
+def get_portable_resource_directory(process_path: str):
     try:
-        process_path = get_ardour_process_path()
         if is_apple():
             return "/".join(process_path.split("/")[:-4])
         return os.path.dirname(process_path)
@@ -101,20 +103,17 @@ def is_windows() -> bool:
     return os.name == "nt"
 
 
-def get_ardour_process_path():
-    # Return path to currently running Ardour8 process.
-    # TODO: Fix this to work with other Ardour versions
-    # (e.g. Ardour7, Ardour6, etc.)
+def get_ardour_process_path() -> str:
+    """Return the path to the currently running Ardour process"""
     processes = [
         p
         for p in psutil.process_iter(["name", "exe"])
-        if os.path.splitext(
-            p.info["name"]  # type:ignore
-        )[0].lower()
-        in ["ardour8", "ardourgui"]
+        if re.match(
+            "^ardour(\\d+|gui)$", os.path.splitext(p.name())[0].lower(), re.IGNORECASE
+        )
     ]
     if not processes:
         raise RuntimeError("No Ardour instance is currently running.")
     elif len(processes) > 1:
         raise RuntimeError("More than one Ardour instance is currently running.")
-    return processes[0].info["exe"]  # type:ignore
+    return processes[0].exe()

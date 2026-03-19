@@ -1,13 +1,13 @@
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
-import psutil
 import wx
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
-from constants import PlaybackState, PyPubSubTopics, TransportAction
+import constants
+from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
 from logger_config import logger
 
 from . import Daw, configure_ardour
@@ -36,6 +36,7 @@ class Ardour(Daw):
         pub.subscribe(self._handle_cue_load, PyPubSubTopics.HANDLE_CUE_LOAD)
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._incoming_armed_action, PyPubSubTopics.ARMED_ACTION)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -48,28 +49,22 @@ class Ardour(Daw):
 
     @staticmethod
     def _validate_ardour_prefs():
-        # Check if OSC is turned on in Ardour's config file.
-        # If not, enable it and restart Ardour.
+        """Find Ardour process and enable OSC configuration"""
         try:
-            if not configure_ardour.osc_interface_exists(
-                configure_ardour.get_resource_path(True)
-            ):
-                try:
-                    configure_ardour.get_ardour_process_path()
-                    pub.sendMessage(
-                        PyPubSubTopics.REQUEST_DAW_RESTART, daw_name="Ardour"
-                    )
-                    enable_osc_thread = threading.Thread(
-                        target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),),
-                    )
-                    enable_osc_thread.start()
-                except RuntimeError:
-                    enable_osc_thread = threading.Thread(
-                        target=configure_ardour.enable_osc_interface,
-                        args=(configure_ardour.get_resource_path(True),),
-                    )
-                    enable_osc_thread.start()
+            resource_path = configure_ardour.get_resource_path(True)
+            try:
+                configure_ardour.get_ardour_process_path()
+                enable_osc_thread = threading.Thread(
+                    target=configure_ardour.enable_osc_interface,
+                    args=(resource_path,),
+                )
+                enable_osc_thread.start()
+            except RuntimeError:
+                enable_osc_thread = threading.Thread(
+                    target=configure_ardour.enable_osc_interface,
+                    args=(resource_path,),
+                )
+                enable_osc_thread.start()
         except Exception as e:
             logger.error(f"Error validating Ardour preferences: {e}")
 
@@ -109,10 +104,12 @@ class Ardour(Daw):
                         )
                         # Check that Ardour has received our configuration request
                         self.ardour_client.send_message("/set_surface", None)
-                    logger.info("Sent Ardour OSC configuration request")
                 except Exception:
-                    logger.error("Ardour not yet available, retrying in 1 second")
-            time.sleep(1)
+                    pass
+            logger.error(
+                f"Ardour not yet available, retrying in {constants.CONNECTION_RECONNECTION_DELAY_SECONDS} second(s)"
+            )
+            time.sleep(constants.CONNECTION_RECONNECTION_DELAY_SECONDS)
 
     def _ardour_connected_status(self, osc_address: str, val) -> None:
         # Watches if Ardour is connected to the OSC server.
@@ -191,31 +188,26 @@ class Ardour(Daw):
             logger.info("Ardour is not recording")
 
     def _goto_marker_by_name(self, marker_name: str) -> None:
-        from app_settings import settings
-
-        if settings.name_only_match:
-            self._get_open_files_for_ardour()
-        else:
-            with self.ardour_send_lock:
-                self.ardour_client.send_message("/marker", marker_name)
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/marker", marker_name)
 
     def get_marker_id_by_name(self, name: str) -> None:
         pass
 
-    def _get_open_files_for_ardour(self) -> None:
-        # TODO: find a way to match that
-        process_name = "Ardour8"
-        open_files = []
-        for proc in psutil.process_iter(["pid", "name", "open_files"]):
-            try:
-                if proc.info["name"] == process_name:
-                    for f in proc.info["open_files"]:
-                        open_files.append(f.path)
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                pass
-        logger.debug(f"Ardour process open files: {open_files}")
-
+    @overload
     def _place_marker_with_name(self, marker_name: str) -> None:
+        pass
+
+    @overload
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        pass
+
+    def _place_marker_with_name(self, marker_name: str, as_thread: bool = True) -> None:
+        if as_thread:
+            threading.Thread(
+                target=self._place_marker_with_name, args=(marker_name, False)
+            ).start()
+            return
         with self.ardour_send_lock:
             self.ardour_client.send_message("/add_marker", marker_name)
 
@@ -229,6 +221,15 @@ class Ardour(Daw):
                 self._ardour_rec()
         except Exception as e:
             logger.error(f"Error processing transport macros: {e}")
+
+    def _incoming_armed_action(self, armed_action: ArmedAction) -> None:
+        try:
+            if armed_action is ArmedAction.ARM_ALL:
+                self._ardour_arm_all()
+            elif armed_action is ArmedAction.DISARM_ALL:
+                self._ardour_disarm_all()
+        except Exception as e:
+            logger.error(f"Error processing armed macros: {e}")
 
     def _ardour_play(self) -> None:
         with self.ardour_send_lock:
@@ -252,6 +253,14 @@ class Ardour(Daw):
             self.ardour_client.send_message("/goto_end", None)
             self.ardour_client.send_message("/rec_enable_toggle", 1.0)
             self.ardour_client.send_message("/transport_play", 1.0)
+
+    def _ardour_arm_all(self) -> None:
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/access_action", "Recorder/arm-all")
+
+    def _ardour_disarm_all(self) -> None:
+        with self.ardour_send_lock:
+            self.ardour_client.send_message("/access_action", "Recorder/arm-none")
 
     def _handle_cue_load(self, cue: str) -> None:
         from app_settings import settings
