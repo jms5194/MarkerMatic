@@ -133,6 +133,14 @@ jobs:
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$f"
           done
+          
+          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+            --options runtime --timestamp --force \
+            "MarkerMatic.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+          
+          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+            --options runtime --timestamp --force \
+            "MarkerMatic.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
       
           find "MarkerMatic.app" -name "Sparkle.framework" -type d | while read f; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
