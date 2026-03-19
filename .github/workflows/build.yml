@@ -129,11 +129,6 @@ jobs:
               --options runtime --timestamp --force "$xpc"
           done
 
-          find "MarkerMatic.app" -path "*/Python.framework/Versions/*/Python" -type f | while read f; do
-            codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-              --options runtime --timestamp --force "$f"
-          done
-
           find "MarkerMatic.app" -name "Python.framework" -type d | while read f; do
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$f"
@@ -143,6 +138,14 @@ jobs:
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$f"
           done
+          
+          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+            --options runtime --timestamp --force \
+            "MarkerMatic.app/Contents/MacOS/python"
+          
+          codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
+            --options runtime --timestamp --force \
+            "MarkerMatic.app/Contents/MacOS/MarkerMatic"
       
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../entitlements.plist \
