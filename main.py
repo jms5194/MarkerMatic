@@ -14,6 +14,7 @@ from pubsub import pub
 from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImportUsage]
 
 import constants
+import external_control.midi as ec_midi
 import ui
 import updates
 import utilities
@@ -21,8 +22,7 @@ from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import DAWS, Daw, DawFeature
-import external_control
-from logger_config import logger, get_log_file
+from logger_config import get_log_file, logger
 from utilities import DawConsoleBridge
 
 HALF_INTERNAL_SPACING = 5
@@ -31,10 +31,12 @@ EXTERNAL_SPACING = 15
 
 LABEL_ROW = 1
 
+midi_impl: ec_midi.MidiImplementation = ec_midi.load_midi()
+
 
 class MainWindow(wx.Frame):
     # Bringing the logic from utilities as an attribute of MainWindow
-    BridgeFunctions = DawConsoleBridge()
+    BridgeFunctions = DawConsoleBridge(midi_impl)
     _app_icons: wx.IconBundle
 
     def __init__(self):
@@ -748,9 +750,9 @@ class PrefsPanel(wx.Panel):
             notebook_external, style=wx.TE_CENTER
         )
         # Set the Choice's options based off the cached values
-        self.update_midi_ports(external_control.get_midi_ports())
+        self.update_midi_ports(midi_impl.midi_ports)
         # Trigger a refresh with the callback, which will update the Choice
-        external_control.refresh_midi_ports(self.update_midi_ports)
+        midi_impl.refresh_midi_ports(self.update_midi_ports)
         external_control_section.Add(
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -795,9 +797,10 @@ class PrefsPanel(wx.Panel):
         self.SetSizer(panel_sizer)
         self.Fit()
 
-        # Update supported features with the currently set console and DAW
+        # Update supported features
         self.update_console_supported_features(console)
         self.update_daw_supported_features(daw)
+        self.update_midi_supported()
 
         # Prefs Window Bindings
         self.Bind(wx.EVT_BUTTON, self.ok_button_pressed, ok_button)
@@ -856,6 +859,11 @@ class PrefsPanel(wx.Panel):
         )
         if DawFeature.NAME_ONLY_MATCH not in daw.supported_features:
             self.match_mode_label_only.SetValue(False)
+
+    def update_midi_supported(self) -> None:
+        """Enables/disables MIDI-related controls if MIDI support is loaded"""
+        self.external_control_midi_port_control.Enabled = midi_impl.midi_supported
+        self.mmc_control_enabled_checkbox.Enabled = midi_impl.midi_supported
 
     def cancel_button_pressed(self, _) -> None:
         """Closes the Preferences dialog without saving"""
@@ -1094,13 +1102,14 @@ class ConsoleRepeaterPane(wx.Panel):
 
 if __name__ == "__main__":
     try:
+        logger.info("Loading MIDI Control")
+        midi_impl.refresh_midi_ports()
         logger.info("Starting wxPython GUI")
         app = wx.App(False)
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
         app.SetTopWindow(frame)
-        external_control.refresh_midi_ports()
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)

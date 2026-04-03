@@ -11,7 +11,8 @@ from configupdater import ConfigUpdater
 from pubsub import pub
 
 import constants
-import external_control
+import external_control.midi as ec_midi
+import external_control.osc as ec_osc
 from app_settings import settings
 from consoles import CONSOLES, Console
 from constants import PyPubSubTopics, TransportAction
@@ -34,13 +35,17 @@ class DawConsoleBridge:
     _console: Console
     _threads: List[threading.Thread] = list()
 
-    def __init__(self):
+    def __init__(
+        self,
+        midi_impl: ec_midi.MidiImplementation,
+    ):
         logger.info(f"Initializing DawConsoleBridge, Version {constants.VERSION}")
         logger.info(f"Platform: {platform.platform()}")
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
         self._daw = Daw()
+        self.midi_impl = midi_impl
 
         # The path to the legacy (v3) configuration file, we only read this
         self._legacy_ini_path = os.path.join(
@@ -185,11 +190,9 @@ class DawConsoleBridge:
             self.console.start_managed_threads(self.start_managed_thread)
         else:
             logger.error("Console is not supported!")
+        self.start_managed_thread("external_osc_control", ec_osc.external_osc_control)
         self.start_managed_thread(
-            "external_osc_control", external_control.external_osc_control
-        )
-        self.start_managed_thread(
-            "external_midi_control", external_control.external_midi_control
+            "external_midi_control", self.midi_impl.external_midi_control
         )
 
     _console_lock = threading.Lock()
