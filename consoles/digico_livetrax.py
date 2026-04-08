@@ -116,10 +116,6 @@ class DiGiCoLiveTrax(Console):
         with self.console_send_lock:
             self.console_client.send_message(osc_address, [*args])
 
-    def _marker_name_handler(self, osc_address: str, marker_name: str) -> None:
-        self._message_received()
-        self.process_marker_macro()
-
     def _macro_play_handler(self, osc_address: str, *args) -> None:
         self._message_received()
         pub.sendMessage(
@@ -149,6 +145,10 @@ class DiGiCoLiveTrax(Console):
                 armed_action=ArmedAction.ARM_ALL,
             )
             self.last_armed_state = True
+
+    def _macro_marker_handler(self, osc_address: str, *args) -> None:
+        self._message_received()
+        self.process_marker_macro()
 
     def _refresh_console_connection(self) -> None:
         with self.console_send_lock:
