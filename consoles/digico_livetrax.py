@@ -8,6 +8,8 @@ from pythonosc import dispatcher, osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import ThreadingOSCUDPServer
 
+import constants
+import time
 import external_control
 import utilities
 from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
@@ -30,6 +32,10 @@ class DiGiCoLiveTrax(Console):
         self.digico_osc_server = None
         self.repeater_osc_server = None
         self.last_armed_state = False
+        self._shutdown_server_event = threading.Event()
+        self._connected = threading.Event()
+        self._connection_check_lock = threading.Lock()
+        self._connection_timeout_counter = 0
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
 
     def start_managed_threads(
@@ -41,6 +47,24 @@ class DiGiCoLiveTrax(Console):
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
+        start_managed_thread("console_connection_monitor", self._console_connection_monitor())
+
+    def _console_connection_monitor(self) -> None:
+        while not self._shutdown_server_event.is_set():
+            time.sleep(1)
+            with self._connection_check_lock:
+                self._connection_timeout_counter += 1
+                if self._connection_timeout_counter == constants.CHECK_CONNECTION_TIME:
+                    self._refresh_console_connection()
+                elif (
+                    self._connection_timeout_counter
+                    >= constants.CHECK_CONNECTION_TIME_COMBINED
+                ):
+                    self._connected.clear()
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    self._connection_timeout_counter = 0
 
     def _build_digico_osc_servers(self) -> None:
         # Connect to the Digico console
@@ -76,46 +100,42 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
             self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
         external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
+        self.digico_dispatcher.set_default_handler(self._message_received)
+
+    def _message_received(self, *_) -> None:
+        if not self._connected.is_set():
+            self._connected.set()
+            # Always refresh control surfaces on conn
+            self._refresh_control_surfaces()
+            pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
+        with self._connection_check_lock:
+            self._connection_timeout_counter = 0
 
     def send_to_console(self, osc_address: str, *args) -> None:
         # Send an OSC message to the console
         with self.console_send_lock:
             self.console_client.send_message(osc_address, [*args])
 
-    def _console_name_handler(self, osc_address: str, console_name: str) -> None:
-        # Receives the console name response and updates the UI.
-        from app_settings import settings
-
-        if settings.forwarder_enabled:
-            try:
-                self.repeater_client.send_message(osc_address, console_name)
-            except Exception as e:
-                logger.error(f"Console name cannot be repeated: {e}")
-        try:
-            wx.CallAfter(
-                pub.sendMessage,
-                PyPubSubTopics.CONSOLE_CONNECTED,
-                consolename=console_name,
-            )
-        except Exception as e:
-            logger.error(f"Console Name Handler Error: {e}")
-
-    def _marker_name_handler(self, osc_address: str, marker_name: str) -> None:
+    def _marker_name_handler(self, osc_address: str, marker_name: str)
+        self._message_received()
         self.process_marker_macro()
 
     def _macro_play_handler(self, osc_address: str, *args) -> None:
+        self._message_received()
         pub.sendMessage(
             PyPubSubTopics.TRANSPORT_ACTION,
             transport_action=TransportAction.PLAY,
         )
 
     def _macro_stop_handler(self, osc_address: str, *args) -> None:
+        self._message_received()
         pub.sendMessage(
             PyPubSubTopics.TRANSPORT_ACTION,
             transport_action=TransportAction.STOP,
         )
 
     def _macro_arm_handler(self, osc_address: str, *args) -> None:
+        self._message_received()
         # There's a better way to make this a toggle, I think.
         if self.last_armed_state:
             pub.sendMessage(
@@ -130,6 +150,10 @@ class DiGiCoLiveTrax(Console):
             )
             self.last_armed_state = True
 
+    def _refresh_console_connection(self) -> None:
+        with self.console_send_lock:
+            self.console_client.send_message("/request_names", None)
+
     @staticmethod
     def process_marker_macro():
         pub.sendMessage(
@@ -137,6 +161,7 @@ class DiGiCoLiveTrax(Console):
         )
 
     def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
+        self._message_received()
         pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
         # 1st arg is current snapshot string
         cue_payload = args[0]
@@ -147,11 +172,6 @@ class DiGiCoLiveTrax(Console):
 
         logger.info(f"Digico recalled cue: {cue_payload}")
         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
-
-    def heartbeat(self) -> None:
-        with self.console_send_lock:
-            assert isinstance(self.console_client, udp_client.UDPClient)
-            self.console_client.send_message("/request_names", None)
 
     def _shutdown_servers(self) -> None:
         try:
