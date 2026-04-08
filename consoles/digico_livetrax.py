@@ -116,7 +116,7 @@ class DiGiCoLiveTrax(Console):
         with self.console_send_lock:
             self.console_client.send_message(osc_address, [*args])
 
-    def _marker_name_handler(self, osc_address: str, marker_name: str)
+    def _marker_name_handler(self, osc_address: str, marker_name: str) -> None:
         self._message_received()
         self.process_marker_macro()
 
