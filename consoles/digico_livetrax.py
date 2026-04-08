@@ -35,6 +35,7 @@ class DiGiCoLiveTrax(Console):
         self._connection_check_lock = threading.Lock()
         self._connection_timeout_counter = 0
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -42,6 +43,7 @@ class DiGiCoLiveTrax(Console):
         from app_settings import settings
 
         logger.info("Starting OSC Server threads")
+        self._shutdown_server_event.clear()
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
