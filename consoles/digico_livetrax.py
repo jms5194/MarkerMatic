@@ -60,7 +60,7 @@ class DiGiCoLiveTrax(Console):
                 ):
                     self._connected.clear()
                     pub.sendMessage(
-                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                        PyPubSubTopics.CONSOLE_DISCONNECTED
                     )
                     self._connection_timeout_counter = 0
 
@@ -105,7 +105,7 @@ class DiGiCoLiveTrax(Console):
             self._connected.set()
             # Always refresh control surfaces on conn
             self._refresh_console_connection()
-            pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
+            pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
 
@@ -160,7 +160,6 @@ class DiGiCoLiveTrax(Console):
 
     def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
         self._message_received()
-        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
         # 1st arg is current snapshot string
         cue_payload = args[0]
 
