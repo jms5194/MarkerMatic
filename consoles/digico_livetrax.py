@@ -1,8 +1,6 @@
-import socket
 import threading
 from typing import Any, Callable
 
-import wx
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
@@ -47,7 +45,7 @@ class DiGiCoLiveTrax(Console):
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
-        start_managed_thread("console_connection_monitor", self._console_connection_monitor())
+        start_managed_thread("console_connection_monitor", self._console_connection_monitor)
 
     def _console_connection_monitor(self) -> None:
         while not self._shutdown_server_event.is_set():
@@ -106,7 +104,7 @@ class DiGiCoLiveTrax(Console):
         if not self._connected.is_set():
             self._connected.set()
             # Always refresh control surfaces on conn
-            self._refresh_control_surfaces()
+            self._refresh_console_connection()
             pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=True)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
