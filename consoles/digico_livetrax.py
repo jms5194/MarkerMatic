@@ -151,7 +151,7 @@ class DiGiCoLiveTrax(Console):
     def heartbeat(self) -> None:
         with self.console_send_lock:
             assert isinstance(self.console_client, udp_client.UDPClient)
-            self.console_client.send_message("request_names", None)
+            self.console_client.send_message("/request_names", None)
 
     def _shutdown_servers(self) -> None:
         try:
