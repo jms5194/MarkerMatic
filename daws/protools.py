@@ -209,12 +209,10 @@ class ProTools(Daw):
 
     def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
         """Jump playhead to the given memory location"""
-        match_loc_time = str(self.pt_engine_connection.get_time_as_type(in_loc=memory_loc.start_time,
-                                                                    in_type="TLType_BarsBeats",
-                                                                    req_type="TLType_TimeCode"))
+        match_loc_time = str(memory_loc.start_time)
         with self.pt_send_lock:
             try:
-                self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time)
+                self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time, location_type="TLType_BarsBeats")
             except grpc._channel._InactiveRpcError:
                 pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
                 logger.error("Pro Tools connection lost, Retrying connection")
