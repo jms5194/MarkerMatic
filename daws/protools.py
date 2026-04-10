@@ -198,7 +198,8 @@ class ProTools(Daw):
                         ):
                             self._pro_tools_stop()
                             self._pro_tools_play()
-                except Exception:
+                except Exception as e:
+                    print(e)
                     logger.error("No matching memory location found")
                 except grpc._channel._InactiveRpcError:
                     pub.sendMessage(
@@ -209,7 +210,11 @@ class ProTools(Daw):
 
     def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
         """Jump playhead to the given memory location"""
-        match_loc_time = str(memory_loc.start_time)
+        match_loc_time = str(self.pt_engine_connection.get_time_as_type(in_loc=memory_loc.start_time,
+                                                                    in_type="TLType_BarsBeats",
+                                                                    req_type="TLType_TimeCode"))
+        print(match_loc_time)
+
         with self.pt_send_lock:
             try:
                 self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time)
