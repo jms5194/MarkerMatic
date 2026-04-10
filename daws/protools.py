@@ -199,8 +199,7 @@ class ProTools(Daw):
                             self._pro_tools_stop()
                             self._pro_tools_play()
                 except Exception as e:
-                    print(e)
-                    logger.error("No matching memory location found")
+                    logger.error(f"Pro Tools responded with an error: {e}")
                 except grpc._channel._InactiveRpcError:
                     pub.sendMessage(
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
@@ -213,8 +212,6 @@ class ProTools(Daw):
         match_loc_time = str(self.pt_engine_connection.get_time_as_type(in_loc=memory_loc.start_time,
                                                                     in_type="TLType_BarsBeats",
                                                                     req_type="TLType_TimeCode"))
-        print(match_loc_time)
-
         with self.pt_send_lock:
             try:
                 self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time)
