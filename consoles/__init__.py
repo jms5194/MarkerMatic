@@ -2,6 +2,7 @@ from .console import Console, Feature
 from .behringerx32 import BehringerX32
 from .behringerxair import BehringerXAir
 from .digico import DiGiCo
+from .digico_livetrax import DiGiCo_LiveTrax
 from .studervista import StuderVista
 from .theatremix import TheatreMix
 from .yamaha import Yamaha
@@ -13,6 +14,7 @@ CONSOLES = {
     "Behringer X32": BehringerX32,
     "Behringer X Air": BehringerXAir,
     "DiGiCo": DiGiCo,
+    "DiGiCo LiveTrax": DiGiCo_LiveTrax,
     "Studer Vista": StuderVista,
     "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,
@@ -28,6 +30,7 @@ __all__ = [
     "BehringerX32",
     "BehringerXAir",
     "DiGiCo",
+    "DiGiCo_LiveTrax",
     "StuderVista",
     "TheatreMix",
     "Yamaha",
