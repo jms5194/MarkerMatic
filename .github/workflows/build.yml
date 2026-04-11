@@ -133,7 +133,7 @@ jobs:
       
           # Sign the outer app bundle last
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --entitlements ./packaging/entitlements.plist \
+            --entitlements ../packaging/entitlements.plist \
             --options runtime --timestamp --force "MarkerMatic.app"
       
           codesign --verify --verbose=4 "MarkerMatic.app"
