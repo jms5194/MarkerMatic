@@ -10,7 +10,7 @@ from ptsl import PTSL_pb2 as pt
 from pubsub import pub
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw, DawFeature

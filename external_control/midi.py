@@ -40,6 +40,7 @@ class MidiPortUnavailableError(Exception):
 def load_midi() -> MidiImplementation:
     try:
         import mido.backends.rtmidi  # noqa: F401
+
         from external_control.midi_mido import MidoMidiImplementation
 
         return MidoMidiImplementation()
