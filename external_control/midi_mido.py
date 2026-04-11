@@ -28,7 +28,7 @@ class MidoMidiImplementation(MidiImplementation):
                         raise MidiPortUnavailableError("MIDI port isn't available")
                     port: mido.ports.BasePort = mido.open_input(  # pyright: ignore[reportAttributeAccessIssue]
                         port_name,
-                        callback=MidoMidiImplementation._handle_midi_message,
+                        callback=self._handle_midi_message,
                     )
                     if port.name == port_name:
                         logger.info(f"Opened MIDI port {port_name}")
