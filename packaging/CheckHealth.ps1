@@ -1,7 +1,7 @@
 Write-Host "Launching MarkerMatic"
 try {
     $Process = Start-Process -FilePath $args[0] -ArgumentList "--check-health" -PassThru -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 30
+    Start-Sleep -Seconds 60
     Stop-Process -InputObject $Process -ErrorAction SilentlyContinue
 }
 catch {}
