@@ -1103,12 +1103,12 @@ class ConsoleRepeaterPane(wx.Panel):
 if __name__ == "__main__":
     try:
         logger.info("Loading MIDI Control")
-        midi_impl.refresh_midi_ports()
         logger.info("Starting wxPython GUI")
         app = wx.App(False)
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
+        midi_impl.refresh_midi_ports()
         app.SetTopWindow(frame)
         app.MainLoop()
     except Exception as e:
