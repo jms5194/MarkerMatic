@@ -13,6 +13,6 @@ py4j==0.10.9.9
 pyobjc-core==12.1; platform_system == "Darwin"
 Pypubsub==4.0.7
 python-osc @git+https://github.com/jms5194/python-osc/
-python-rtmidi==1.5.8
+python-rtmidi==1.5.8 ; sys_platform != "win32"
 show-in-file-manager==1.1.6
 wxPython==4.2.5
