@@ -58,6 +58,8 @@ class MainWindow(wx.Frame):
         self.updater.register_request_stop_callback(self.on_close_for_update)
         updates_menuitem = None
 
+        utilities.parse_arguments(exit_callback=self.close_app)
+
         menu_bar = wx.MenuBar()
         if platform.system() == "Darwin":
             main_menu = menu_bar.OSXGetAppleMenu()
@@ -173,15 +175,22 @@ class MainWindow(wx.Frame):
                     event.Veto()
                 return
         self.updater.stop()
-        self.finish_app_close()
+        self.close_app()
 
     def on_close_for_update(self, *_) -> None:
         """Trigger a shutdown of the application, when requested by the
         updater"""
         logger.info("Requested to close for an update")
-        self.finish_app_close()
+        self.close_app()
 
-    def finish_app_close(self) -> None:
+    def close_app(self) -> None:
+        """Close the app cleanly, making sure we're in the main thread"""
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            self._finish_app_close()
+        else:
+            wx.CallAfter(self._finish_app_close)
+
+    def _finish_app_close(self) -> None:
         """Finish the shutdown procedures, and close the application GUI"""
         closed_complete = self.BridgeFunctions.close_servers()
         if closed_complete:
@@ -1102,7 +1111,6 @@ class ConsoleRepeaterPane(wx.Panel):
 
 if __name__ == "__main__":
     try:
-        logger.info("Loading MIDI Control")
         logger.info("Starting wxPython GUI")
         app = wx.App(False)
         app.SetAppName(constants.APPLICATION_NAME)

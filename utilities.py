@@ -1,10 +1,11 @@
+import argparse
 import inspect
 import ipaddress
 import os.path
 import platform
 import threading
 import time
-from typing import Callable, List
+from typing import Any, Callable, List
 
 import appdirs
 from configupdater import ConfigUpdater
@@ -290,3 +291,25 @@ def get_resources_directory_path() -> str:
     if py2app_resource_path is not None:
         return py2app_resource_path
     return os.path.join(os.path.dirname(__file__), "resources")
+
+
+def parse_arguments(exit_callback: Callable[[], Any]) -> None:
+    """Parses arguments passed to the application, and takes the appropriate
+    actions"""
+    parser = argparse.ArgumentParser(prog=constants.APPLICATION_NAME)
+    parser.add_argument("-c", "--check-health", action="store_true")
+    args = parser.parse_args()
+    if args.check_health:
+        check_health_thread = threading.Thread(
+            target=_do_check_health,
+            kwargs={"exit_callback": exit_callback},
+        )
+        check_health_thread.start()
+
+
+def _do_check_health(exit_callback: Callable[[], Any]) -> None:
+    """Run the application health check- this currently just makes sure the
+    application launches and runs for a while, then exits cleanly"""
+    time.sleep(30)
+    logger.info("App survived for 30s, good job!")
+    exit_callback()
