@@ -14,7 +14,7 @@ CONSOLES = {
     "Behringer X32": BehringerX32,
     "Behringer X Air": BehringerXAir,
     "DiGiCo": DiGiCo,
-    "DiGiCo_LiveTrax": DiGiCoLiveTrax,
+    "DiGiCo - LiveTrax": DiGiCoLiveTrax,
     "Studer Vista": StuderVista,
     "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,

@@ -1,25 +1,22 @@
 import threading
+import time
 from typing import Any, Callable
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
-from pythonosc.dispatcher import Dispatcher
-from pythonosc.osc_server import ThreadingOSCUDPServer
 
 import constants
-import time
-import external_control
 import utilities
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Console, Feature
 
+
 class DiGiCoLiveTrax(Console):
-    type = "DiGiCo_LiveTrax"
+    type = "DiGiCo - LiveTrax"
     supported_features = [
         Feature.CUE_NUMBER,
-        Feature.REPEATER,
         Feature.SEPERATE_RECEIVE_PORT,
         Feature.MACROS,
     ]
@@ -28,26 +25,27 @@ class DiGiCoLiveTrax(Console):
         super().__init__()
         self.console_send_lock = threading.Lock()
         self.digico_osc_server = None
-        self.repeater_osc_server = None
         self.last_armed_state = False
         self._shutdown_server_event = threading.Event()
         self._connected = threading.Event()
         self._connection_check_lock = threading.Lock()
         self._connection_timeout_counter = 0
+        self._daw_assumed_arm_state_lock = threading.Lock()
+        self._daw_assumed_arm_state = False
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
         pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
     ) -> None:
-        from app_settings import settings
-
         logger.info("Starting OSC Server threads")
         self._shutdown_server_event.clear()
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
-        start_managed_thread("console_connection_monitor", self._console_connection_monitor)
+        start_managed_thread(
+            "console_connection_monitor", self._console_connection_monitor
+        )
 
     def _console_connection_monitor(self) -> None:
         while not self._shutdown_server_event.is_set():
@@ -61,9 +59,7 @@ class DiGiCoLiveTrax(Console):
                     >= constants.CHECK_CONNECTION_TIME_COMBINED
                 ):
                     self._connected.clear()
-                    pub.sendMessage(
-                        PyPubSubTopics.CONSOLE_DISCONNECTED
-                    )
+                    pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
                     self._connection_timeout_counter = 0
 
     def _build_digico_osc_servers(self) -> None:
@@ -99,7 +95,6 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
             self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
-        external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
         self.digico_dispatcher.set_default_handler(self._message_received)
 
     def _message_received(self, *_) -> None:
@@ -110,11 +105,6 @@ class DiGiCoLiveTrax(Console):
             pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
-
-    def send_to_console(self, osc_address: str, *args) -> None:
-        # Send an OSC message to the console
-        with self.console_send_lock:
-            self.console_client.send_message(osc_address, [*args])
 
     def _macro_play_handler(self, osc_address: str, *args) -> None:
         self._message_received()
@@ -133,18 +123,21 @@ class DiGiCoLiveTrax(Console):
     def _macro_arm_handler(self, osc_address: str, *args) -> None:
         self._message_received()
         # There's a better way to make this a toggle, I think.
-        if self.last_armed_state:
-            pub.sendMessage(
-                PyPubSubTopics.ARMED_ACTION,
-                armed_action=ArmedAction.DISARM_ALL,
-            )
-            self.last_armed_state = False
-        elif not self.last_armed_state:
-            pub.sendMessage(
-                PyPubSubTopics.ARMED_ACTION,
-                armed_action=ArmedAction.ARM_ALL,
-            )
-            self.last_armed_state = True
+        # Lock to make sure we queue and process one at a time if it gets hit
+        # in quick succession
+        with self._daw_assumed_arm_state_lock:
+            if self._daw_assumed_arm_state:
+                pub.sendMessage(
+                    PyPubSubTopics.ARMED_ACTION,
+                    armed_action=ArmedAction.DISARM_ALL,
+                )
+            else:
+                pub.sendMessage(
+                    PyPubSubTopics.ARMED_ACTION,
+                    armed_action=ArmedAction.ARM_ALL,
+                )
+            # Toggle the assumed DAW arm state to the opposite value
+            self._daw_assumed_arm_state = not self._daw_assumed_arm_state
 
     def _macro_marker_handler(self, osc_address: str, *args) -> None:
         self._message_received()
