@@ -1,13 +1,13 @@
 import json
+import threading
 from typing import Any, Callable, Optional
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
-import threading
 import utilities
-from logger_config import logger
 from constants import PyPubSubTopics
+from logger_config import logger
 
 from . import Console
 

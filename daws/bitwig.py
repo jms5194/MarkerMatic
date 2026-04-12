@@ -8,10 +8,10 @@ from py4j.java_gateway import JavaGateway
 from py4j.protocol import Py4JError, Py4JJavaError, Py4JNetworkError
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
-from . import Daw, configure_bitwig, DawFeature
+from . import Daw, DawFeature, configure_bitwig
 
 
 class Bitwig(Daw):

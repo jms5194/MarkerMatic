@@ -10,7 +10,7 @@ from ptsl import PTSL_pb2 as pt
 from pubsub import pub
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw, DawFeature
@@ -198,8 +198,8 @@ class ProTools(Daw):
                         ):
                             self._pro_tools_stop()
                             self._pro_tools_play()
-                except Exception:
-                    logger.error("No matching memory location found")
+                except Exception as e:
+                    logger.error(f"Pro Tools responded with an error: {e}")
                 except grpc._channel._InactiveRpcError:
                     pub.sendMessage(
                         PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
@@ -212,7 +212,9 @@ class ProTools(Daw):
         match_loc_time = str(memory_loc.start_time)
         with self.pt_send_lock:
             try:
-                self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time)
+                self.pt_engine_connection.set_timeline_selection(
+                    in_time=match_loc_time, location_type="TLType_BarsBeats"
+                )
             except grpc._channel._InactiveRpcError:
                 pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
                 logger.error("Pro Tools connection lost, Retrying connection")
