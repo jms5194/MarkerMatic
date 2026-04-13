@@ -6,6 +6,7 @@ from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
 import constants
+import wx
 import utilities
 from constants import ArmedAction, PyPubSubTopics, TransportAction
 from logger_config import logger
@@ -43,24 +44,17 @@ class DiGiCoLiveTrax(Console):
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
-        start_managed_thread(
-            "console_connection_monitor", self._console_connection_monitor
-        )
 
-    def _console_connection_monitor(self) -> None:
-        while not self._shutdown_server_event.is_set():
-            time.sleep(1)
-            with self._connection_check_lock:
-                self._connection_timeout_counter += 1
-                if self._connection_timeout_counter == constants.CHECK_CONNECTION_TIME:
-                    self._refresh_console_connection()
-                elif (
-                    self._connection_timeout_counter
-                    >= constants.CHECK_CONNECTION_TIME_COMBINED
-                ):
-                    self._connected.clear()
-                    pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
-                    self._connection_timeout_counter = 0
+    def _console_heartbeat_handler(self, osc_address: str, strip_1_name: str, strip_1_int: int) -> None:
+        # Receives the console response and updates the UI.
+
+        try:
+            wx.CallAfter(
+                pub.sendMessage,
+                PyPubSubTopics.CONSOLE_CONNECTED
+            )
+        except Exception as e:
+            logger.error(f"Console Heartbeat Handler Error: {e}")
 
     def _build_digico_osc_servers(self) -> None:
         # Connect to the Digico console
@@ -95,7 +89,7 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
             self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
-        self.digico_dispatcher.set_default_handler(self._message_received)
+            self.digico_dispatcher.map("/strip/name/1", self._console_heartbeat_handler)
 
     def _message_received(self, *_) -> None:
         if not self._connected.is_set():
@@ -105,6 +99,7 @@ class DiGiCoLiveTrax(Console):
             pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
         with self._connection_check_lock:
             self._connection_timeout_counter = 0
+            print("reset counter")
 
     def _macro_play_handler(self, osc_address: str, *args) -> None:
         self._message_received()
@@ -143,10 +138,6 @@ class DiGiCoLiveTrax(Console):
         self._message_received()
         self.process_marker_macro()
 
-    def _refresh_console_connection(self) -> None:
-        with self.console_send_lock:
-            self.console_client.send_message("/request_names", None)
-
     @staticmethod
     def process_marker_macro():
         pub.sendMessage(
@@ -164,6 +155,11 @@ class DiGiCoLiveTrax(Console):
 
         logger.info(f"Digico recalled cue: {cue_payload}")
         pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+
+    def heartbeat(self) -> None:
+        with self.console_send_lock:
+            assert isinstance(self.console_client, udp_client.UDPClient)
+            self.console_client.send_message("/request_names", None)
 
     def _shutdown_servers(self) -> None:
         try:
