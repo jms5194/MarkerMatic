@@ -15,6 +15,7 @@ from . import Console, Feature
 
 
 class DiGiCoLiveTrax(Console):
+    fixed_receive_port = 3819
     type = "DiGiCo - LiveTrax"
     supported_features = [
         Feature.CUE_NUMBER,
@@ -45,9 +46,10 @@ class DiGiCoLiveTrax(Console):
             "console_connection_thread", self._build_digico_osc_servers
         )
 
-    def _console_heartbeat_handler(self, osc_address: str, strip_1_name: str, strip_1_int: int) -> None:
+    def _console_heartbeat_handler(self, osc_address: str,
+                                   strip_1_name: str,
+                                   strip_1_int: int) -> None:
         # Receives the console response and updates the UI.
-
         try:
             wx.CallAfter(
                 pub.sendMessage,
@@ -91,32 +93,21 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
             self.digico_dispatcher.map("/strip/name/1", self._console_heartbeat_handler)
 
-    def _message_received(self, *_) -> None:
-        if not self._connected.is_set():
-            self._connected.set()
-            # Always refresh control surfaces on conn
-            self._refresh_console_connection()
-            pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
-        with self._connection_check_lock:
-            self._connection_timeout_counter = 0
-            print("reset counter")
-
-    def _macro_play_handler(self, osc_address: str, *args) -> None:
-        self._message_received()
+    @staticmethod
+    def _macro_play_handler(osc_address: str, *args) -> None:
         pub.sendMessage(
             PyPubSubTopics.TRANSPORT_ACTION,
             transport_action=TransportAction.PLAY,
         )
 
-    def _macro_stop_handler(self, osc_address: str, *args) -> None:
-        self._message_received()
+    @staticmethod
+    def _macro_stop_handler(osc_address: str, *args) -> None:
         pub.sendMessage(
             PyPubSubTopics.TRANSPORT_ACTION,
             transport_action=TransportAction.STOP,
         )
 
     def _macro_arm_handler(self, osc_address: str, *args) -> None:
-        self._message_received()
         # There's a better way to make this a toggle, I think.
         # Lock to make sure we queue and process one at a time if it gets hit
         # in quick succession
@@ -135,7 +126,6 @@ class DiGiCoLiveTrax(Console):
             self._daw_assumed_arm_state = not self._daw_assumed_arm_state
 
     def _macro_marker_handler(self, osc_address: str, *args) -> None:
-        self._message_received()
         self.process_marker_macro()
 
     @staticmethod
