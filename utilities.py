@@ -5,7 +5,7 @@ import os.path
 import platform
 import threading
 import time
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 
 import appdirs
 from configupdater import ConfigUpdater
@@ -102,9 +102,12 @@ class DawConsoleBridge:
         cue_list_player,
         initial_mode=settings.initial_mode,
         macros_enabled=settings.macros_enabled,
+        ask_before_closing: Optional[bool] = None,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
+        if ask_before_closing is None:
+            ask_before_closing = settings.ask_before_closing
         logger.info("Updating configuration file")
         updater = ConfigUpdater()
         try:
@@ -115,6 +118,7 @@ class DawConsoleBridge:
             if not updater.has_section("main"):
                 logger.info("Adding main section to config file")
                 updater.add_section("main")
+            updater["main"]["ask_before_closing"] = str(ask_before_closing)
             updater["main"]["default_ip"] = con_ip
             updater["main"]["repeater_ip"] = rptr_ip
             updater["main"]["default_digico_send_port"] = str(con_send)

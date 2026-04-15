@@ -160,7 +160,9 @@ class MainWindow(wx.Frame):
         cur_pos = self.GetTopLevelParent().GetPosition()
         self.BridgeFunctions.update_pos_in_config(cur_pos)
 
-        if isinstance(event, wx.CommandEvent) or event.CanVeto():
+        if (
+            isinstance(event, wx.CommandEvent) or event.CanVeto()
+        ) and settings.ask_before_closing:
             logger.info("Confirming if the user would like to close")
             dlg = wx.MessageDialog(
                 self,
@@ -673,6 +675,13 @@ class PrefsPanel(wx.Panel):
         )
         self.always_on_top_checkbox.SetValue(settings.always_on_top)
         app_settings_section.Add(self.always_on_top_checkbox, flag=wx.EXPAND)
+        # Ask Before Closing
+        app_settings_section.Add(width=-1, height=-1)
+        self.ask_before_closing_checkbox = wx.CheckBox(
+            notebook_application, label="Ask before closing"
+        )
+        self.ask_before_closing_checkbox.SetValue(settings.ask_before_closing)
+        app_settings_section.Add(self.ask_before_closing_checkbox, flag=wx.EXPAND)
         # Initial Mode
         app_settings_section.Add(
             wx.StaticText(
@@ -901,6 +910,7 @@ class PrefsPanel(wx.Panel):
                 self.console_cue_list_player_control.GetValue()
             )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
+            settings.ask_before_closing = self.ask_before_closing_checkbox.GetValue()
             settings.initial_mode = [
                 PlaybackState[x]
                 for x in PlaybackState.__members__

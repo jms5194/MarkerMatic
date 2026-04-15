@@ -13,6 +13,7 @@ class ThreadSafeSettings:
     def __init__(self):
         self._lock = threading.Lock()
         self._settings = {
+            "ask_before_closing": True,
             "console_ip": "192.0.2.11",
             "repeater_ip": "192.0.2.21",
             "repeater_port": 9999,
@@ -36,6 +37,16 @@ class ThreadSafeSettings:
             "allow_loading_while_playing": False,
             "cue_list_player": 1,
         }
+
+    @property
+    def ask_before_closing(self) -> bool:
+        with self._lock:
+            return self._settings["ask_before_closing"]
+
+    @ask_before_closing.setter
+    def ask_before_closing(self, value: bool) -> None:
+        with self._lock:
+            self._settings["ask_before_closing"] = value
 
     @property
     def console_ip(self) -> str:
@@ -319,6 +330,7 @@ class ThreadSafeSettings:
                 )
 
             boolean_properties = {
+                "ask_before_closing": "ask_before_closing",
                 "forwarder_enabled": "forwarder_enabled",
                 "name_only_match": "name_only_match",
                 "always_on_top": "always_on_top",
