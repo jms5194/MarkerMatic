@@ -15,6 +15,10 @@ push = true
     'VERSION_EXTRA = "MAJOR.MINOR.PATCH.BUILD"',
     'VERSION_SHORT = "MAJOR.MINOR.PATCH"',
 ]
+"LICENSE" = [
+    'Copyright (c) 2021-YYYY Justin Stasiw',
+    'Copyright (c) 2025-YYYY Liam Steckler',
+]
 "packaging/innosetup.iss" = [
     '#define MyAppVersion "MAJOR.MINOR.PATCH (Build BUILD)"',
     "AppCopyright=© YYYY",
