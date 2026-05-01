@@ -1,6 +1,7 @@
 import argparse
 import inspect
 import ipaddress
+import logging
 import os.path
 import platform
 import threading
@@ -302,6 +303,7 @@ def parse_arguments(exit_callback: Callable[[], Any]) -> None:
     actions"""
     parser = argparse.ArgumentParser(prog=constants.APPLICATION_NAME)
     parser.add_argument("-c", "--check-health", action="store_true")
+    parser.add_argument("-d", "--debug", action="store_true")
     args = parser.parse_args()
     if args.check_health:
         check_health_thread = threading.Thread(
@@ -309,6 +311,8 @@ def parse_arguments(exit_callback: Callable[[], Any]) -> None:
             kwargs={"exit_callback": exit_callback},
         )
         check_health_thread.start()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
 
 
 def _do_check_health(exit_callback: Callable[[], Any]) -> None:

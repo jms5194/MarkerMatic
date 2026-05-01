@@ -26,7 +26,7 @@ def setup_logger():
 
     # Create logger
     logger = logging.getLogger(constants.APPLICATION_NAME)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Create formatters
     file_formatter = logging.Formatter(
