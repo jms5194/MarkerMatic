@@ -1,4 +1,5 @@
 import argparse
+import functools
 import inspect
 import ipaddress
 import logging
@@ -171,12 +172,12 @@ class DawConsoleBridge:
         with open(self._ini_path, "w") as file:
             updater.write(file, validate=False)
 
-    def start_managed_thread(self, attr_name: str, target: Callable) -> None:
-        if "stop_event" in inspect.getargs(target.__code__).args:
+    def start_managed_thread(self, name: str, target: Callable) -> None:
+        if "stop_event" in inspect.signature(target).parameters:
             kwargs = {"stop_event": self._shutdown_server_event}
         else:
             kwargs = None
-        thread = threading.Thread(target=target, kwargs=kwargs, daemon=True)
+        thread = threading.Thread(target=target, name=name, kwargs=kwargs, daemon=True)
         self._threads.append(thread)
         thread.start()
 
