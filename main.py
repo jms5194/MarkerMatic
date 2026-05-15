@@ -815,6 +815,15 @@ class PrefsPanel(wx.Panel):
         self.SetSizer(panel_sizer)
         self.Fit()
 
+        # All port controls should get added here so we can validate
+        self.port_controls = (
+            self.console_send_port_control,
+            self.console_rcv_port_control,
+            self.repeater_panel.send_port_control,
+            self.repeater_panel.receive_port_control,
+            self.external_control_osc_port_control,
+        )
+
         # Update supported features
         self.update_console_supported_features(console)
         self.update_daw_supported_features(daw)
@@ -828,9 +837,15 @@ class PrefsPanel(wx.Panel):
         self.console_cue_list_player_control.Bind(
             wx.EVT_KILL_FOCUS, self.check_cue_list_player
         )
+        for port_control in self.port_controls:
+            port_control.Bind(wx.EVT_KILL_FOCUS, self.check_ports)
+            port_control.Bind(wx.EVT_TEXT, self.modified_ports)
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
         self.daw_type_choice.Bind(wx.EVT_CHOICE, self.changed_daw_type)
         self.Show()
+
+        self.ports_modified = True
+        self.check_ports()
 
     def changed_console_type(self, event: wx.CommandEvent) -> None:
         self.console: Console = CONSOLES[event.GetString()]
@@ -1004,6 +1019,37 @@ class PrefsPanel(wx.Panel):
             dlg.ShowModal()
             dlg.Destroy()
             wx.CallAfter(self.console_cue_list_player_control.SetFocus)
+
+    def modified_ports(self, _: wx.CommandEvent) -> None:
+        """Sets a flag that a port has been modified"""
+        self.ports_modified = True
+        print(True)
+
+    def check_ports(self, focus_event: Optional[wx.FocusEvent] = None) -> None:
+        """Validates the port number fields to make sure we don't have any
+        duplicates, and displays an alert dialog if we do"""
+        if self.ports_modified:
+            self.ports_modified = False
+            known_ports: set[str] = set()
+            for port_control in self.port_controls:
+                port = str(port_control.GetValue())
+                if port in known_ports:
+                    logger.error(f"Port number {port} is in use in multiple fields")
+                    dlg = wx.MessageDialog(
+                        self,
+                        f"Port number {port} is already in use. Please choose a different port number.",
+                        constants.APPLICATION_NAME,
+                        wx.OK,
+                    )
+                    dlg.ShowModal()
+                    dlg.Destroy()
+                    if isinstance(focus_event, wx.FocusEvent) and isinstance(
+                        focus_event.EventObject, wx.Window
+                    ):
+                        wx.CallAfter(focus_event.EventObject.SetFocus)
+                    self.ports_modified = False
+                    break
+                known_ports.add(port)
 
     def update_midi_ports(self, ports: list[str]) -> None:
         def update(self: PrefsPanel, ports: list[str]) -> None:
