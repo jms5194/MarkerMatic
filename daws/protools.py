@@ -215,7 +215,9 @@ class ProTools(Daw):
             loc_type = "TLType_BarsBeats"
         with self.pt_send_lock:
             try:
-                self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time, location_type=loc_type)
+                self.pt_engine_connection.set_timeline_selection(
+                    in_time=match_loc_time, location_type=loc_type
+                )
             except grpc._channel._InactiveRpcError:
                 pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
                 logger.error("Pro Tools connection lost, Retrying connection")
