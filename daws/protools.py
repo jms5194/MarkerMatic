@@ -115,16 +115,35 @@ class ProTools(Daw):
             try:
                 all_memory_locs = self.pt_engine_connection.get_memory_locations()
                 last_memory_loc = all_memory_locs[-1]
-                if last_memory_loc.name != marker_name:
+                second_last_memory_loc = all_memory_locs[-2]
+                if second_last_memory_loc.location_number == last_memory_loc.location_number - 1:
+                    if last_memory_loc.name != marker_name:
+                        self.pt_engine_connection.edit_memory_location(
+                            location_number=last_memory_loc.number,
+                            name=marker_name,
+                            start_time=last_memory_loc.start_time,
+                            end_time=last_memory_loc.end_time,
+                            time_properties=last_memory_loc.time_properties,
+                            reference=last_memory_loc.reference,
+                            general_properties=last_memory_loc.general_properties,
+                            comments=last_memory_loc.comments,
+                        )
+                else:
+                    logger.info("Additional out of order markers found in session")
+                    for i in all_memory_locs:
+                        mem_loc_test_1 = all_memory_locs[-i]
+                        mem_loc_test_2 = all_memory_locs[-i - 1]
+                        if mem_loc_test_1.location_number == mem_loc_test_2.location_number - 1:
+                            break
                     self.pt_engine_connection.edit_memory_location(
-                        location_number=last_memory_loc.number,
+                        location_number=mem_loc_test_1.number,
                         name=marker_name,
-                        start_time=last_memory_loc.start_time,
-                        end_time=last_memory_loc.end_time,
-                        time_properties=last_memory_loc.time_properties,
-                        reference=last_memory_loc.reference,
-                        general_properties=last_memory_loc.general_properties,
-                        comments=last_memory_loc.comments,
+                        start_time=mem_loc_test_1.start_time,
+                        end_time=mem_loc_test_1.end_time,
+                        time_properties=mem_loc_test_1.time_properties,
+                        reference=mem_loc_test_1.reference,
+                        general_properties=mem_loc_test_1.general_properties,
+                        comments=mem_loc_test_1.comments,
                     )
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
