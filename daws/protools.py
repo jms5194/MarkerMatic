@@ -113,10 +113,74 @@ class ProTools(Daw):
                 logger.error("Pro Tools connection lost, Retrying connection")
                 self._open_protools_connection()
             try:
+                # Since we can only rename markers by targeting the number, we need to try to verify that the
+                # marker we've placed is consecutive to the second most high marker. If it is not,
+                # markers with high indices may have been put into the session and we need to discover the
+                # correct one that we've placed.
+
                 all_memory_locs = self.pt_engine_connection.get_memory_locations()
-                last_memory_loc = all_memory_locs[-1]
-                second_last_memory_loc = all_memory_locs[-2]
-                if second_last_memory_loc.location_number == last_memory_loc.location_number - 1:
+                # Initial check to make sure there are enough markers in the session to bother.
+                if len(all_memory_locs) >= 2:
+                    last_memory_loc = all_memory_locs[-1]
+                    second_last_memory_loc = all_memory_locs[-2]
+                    # If the number of the markers is consecutive, go ahead and validate whether
+                    # the name was validated or not.
+                    if second_last_memory_loc.number == last_memory_loc.number - 1:
+                        if last_memory_loc.name != marker_name:
+                            self.pt_engine_connection.edit_memory_location(
+                                location_number=last_memory_loc.number,
+                                name=marker_name,
+                                start_time=last_memory_loc.start_time,
+                                end_time=last_memory_loc.end_time,
+                                time_properties=last_memory_loc.time_properties,
+                                reference=last_memory_loc.reference,
+                                general_properties=last_memory_loc.general_properties,
+                                comments=last_memory_loc.comments,
+                            )
+                    else:
+                        # If the marker numbers are not consecutive, we need to find the last
+                        # pair of markers that have consecutive numbers, unless there are only
+                        # two markers in the session, in which case the lowest marker is likely
+                        # our newest marker
+                        logger.info("Additional out of order markers found in session")
+                        if len(all_memory_locs) == 2:
+                            last_memory_loc = all_memory_locs[-2]
+                            if last_memory_loc.name != marker_name:
+                                self.pt_engine_connection.edit_memory_location(
+                                    location_number=last_memory_loc.number,
+                                    name=marker_name,
+                                    start_time=last_memory_loc.start_time,
+                                    end_time=last_memory_loc.end_time,
+                                    time_properties=last_memory_loc.time_properties,
+                                    reference=last_memory_loc.reference,
+                                    general_properties=last_memory_loc.general_properties,
+                                    comments=last_memory_loc.comments,
+                                )
+                        else:
+                            # Cast all_memory_locs to be a python list from its
+                            # RepeatedCompositeContainer incoming format
+                            list_memory_locs = list(all_memory_locs)
+                            # Let's find the highest number pair of markers that
+                            # have consecutive marker numbers.
+                            for item in reversed(list_memory_locs):
+                                index_position = list_memory_locs.index(item)
+                                if len(list_memory_locs) > index_position + 1:
+                                    comp_item = list_memory_locs[index_position + 1]
+                                    if item.number + 1 == comp_item.number:
+                                        if comp_item.name != marker_name:
+                                            self.pt_engine_connection.edit_memory_location(
+                                                location_number=comp_item.number,
+                                                name=marker_name,
+                                                start_time=comp_item.start_time,
+                                                end_time=comp_item.end_time,
+                                                time_properties=comp_item.time_properties,
+                                                reference=comp_item.reference,
+                                                general_properties=comp_item.general_properties,
+                                                comments=comp_item.comments,
+                                            )
+                                        break
+                else:
+                    last_memory_loc = all_memory_locs[-1]
                     if last_memory_loc.name != marker_name:
                         self.pt_engine_connection.edit_memory_location(
                             location_number=last_memory_loc.number,
@@ -128,23 +192,7 @@ class ProTools(Daw):
                             general_properties=last_memory_loc.general_properties,
                             comments=last_memory_loc.comments,
                         )
-                else:
-                    logger.info("Additional out of order markers found in session")
-                    for i in all_memory_locs:
-                        mem_loc_test_1 = all_memory_locs[-i]
-                        mem_loc_test_2 = all_memory_locs[-i - 1]
-                        if mem_loc_test_1.location_number == mem_loc_test_2.location_number - 1:
-                            break
-                    self.pt_engine_connection.edit_memory_location(
-                        location_number=mem_loc_test_1.number,
-                        name=marker_name,
-                        start_time=mem_loc_test_1.start_time,
-                        end_time=mem_loc_test_1.end_time,
-                        time_properties=mem_loc_test_1.time_properties,
-                        reference=mem_loc_test_1.reference,
-                        general_properties=mem_loc_test_1.general_properties,
-                        comments=mem_loc_test_1.comments,
-                    )
+
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
