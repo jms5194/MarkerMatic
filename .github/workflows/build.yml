@@ -31,7 +31,7 @@ jobs:
     name: Trigger CI Builds
     steps:
       - name: Trigger CI builds
-        run: 'curl --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
+        run: 'curl -m 10 --retry 10 --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
 
   build:
     # When create_release is finished

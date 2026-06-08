@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Trigger website build
-        run: 'curl --silent --output /dev/null --show-error --fail --json ''{"branch":"main"}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_site_build_url }}"'
+        run: 'curl -m 10 --retry 10 --silent --output /dev/null --show-error --fail --json ''{"branch":"main"}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_site_build_url }}"'
