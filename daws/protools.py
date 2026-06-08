@@ -294,6 +294,9 @@ class ProTools(Daw):
     def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
         """Jump playhead to the given memory location"""
         match_loc_time = str(memory_loc.start_time)
+        loc_type = "TLType_Samples"
+        if "|" in match_loc_time:
+            loc_type = "TLType_BarsBeats"
         with self.pt_send_lock:
             try:
                 self.pt_engine_connection.set_timeline_selection(
