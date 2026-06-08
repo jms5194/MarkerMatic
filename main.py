@@ -14,6 +14,7 @@ from pubsub import pub
 from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImportUsage]
 
 import constants
+import external_control.midi as ec_midi
 import ui
 import updates
 import utilities
@@ -21,8 +22,7 @@ from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import DAWS, Daw, DawFeature
-import external_control
-from logger_config import logger, get_log_file
+from logger_config import get_log_file, logger
 from utilities import DawConsoleBridge
 
 HALF_INTERNAL_SPACING = 5
@@ -31,10 +31,12 @@ EXTERNAL_SPACING = 15
 
 LABEL_ROW = 1
 
+midi_impl: ec_midi.MidiImplementation = ec_midi.load_midi()
+
 
 class MainWindow(wx.Frame):
     # Bringing the logic from utilities as an attribute of MainWindow
-    BridgeFunctions = DawConsoleBridge()
+    BridgeFunctions = DawConsoleBridge(midi_impl)
     _app_icons: wx.IconBundle
 
     def __init__(self):
@@ -55,6 +57,8 @@ class MainWindow(wx.Frame):
         self.updater = updates.Updater()
         self.updater.register_request_stop_callback(self.on_close_for_update)
         updates_menuitem = None
+
+        utilities.parse_arguments(exit_callback=self.close_app)
 
         menu_bar = wx.MenuBar()
         if platform.system() == "Darwin":
@@ -171,15 +175,22 @@ class MainWindow(wx.Frame):
                     event.Veto()
                 return
         self.updater.stop()
-        self.finish_app_close()
+        self.close_app()
 
     def on_close_for_update(self, *_) -> None:
         """Trigger a shutdown of the application, when requested by the
         updater"""
         logger.info("Requested to close for an update")
-        self.finish_app_close()
+        self.close_app()
 
-    def finish_app_close(self) -> None:
+    def close_app(self) -> None:
+        """Close the app cleanly, making sure we're in the main thread"""
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            self._finish_app_close()
+        else:
+            wx.CallAfter(self._finish_app_close)
+
+    def _finish_app_close(self) -> None:
         """Finish the shutdown procedures, and close the application GUI"""
         closed_complete = self.BridgeFunctions.close_servers()
         if closed_complete:
@@ -748,9 +759,9 @@ class PrefsPanel(wx.Panel):
             notebook_external, style=wx.TE_CENTER
         )
         # Set the Choice's options based off the cached values
-        self.update_midi_ports(external_control.get_midi_ports())
+        self.update_midi_ports(midi_impl.midi_ports)
         # Trigger a refresh with the callback, which will update the Choice
-        external_control.refresh_midi_ports(self.update_midi_ports)
+        midi_impl.refresh_midi_ports(self.update_midi_ports)
         external_control_section.Add(
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -795,9 +806,10 @@ class PrefsPanel(wx.Panel):
         self.SetSizer(panel_sizer)
         self.Fit()
 
-        # Update supported features with the currently set console and DAW
+        # Update supported features
         self.update_console_supported_features(console)
         self.update_daw_supported_features(daw)
+        self.update_midi_supported()
 
         # Prefs Window Bindings
         self.Bind(wx.EVT_BUTTON, self.ok_button_pressed, ok_button)
@@ -856,6 +868,11 @@ class PrefsPanel(wx.Panel):
         )
         if DawFeature.NAME_ONLY_MATCH not in daw.supported_features:
             self.match_mode_label_only.SetValue(False)
+
+    def update_midi_supported(self) -> None:
+        """Enables/disables MIDI-related controls if MIDI support is loaded"""
+        self.external_control_midi_port_control.Enabled = midi_impl.midi_supported
+        self.mmc_control_enabled_checkbox.Enabled = midi_impl.midi_supported
 
     def cancel_button_pressed(self, _) -> None:
         """Closes the Preferences dialog without saving"""
@@ -1099,8 +1116,8 @@ if __name__ == "__main__":
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
+        midi_impl.refresh_midi_ports()
         app.SetTopWindow(frame)
-        external_control.refresh_midi_ports()
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)

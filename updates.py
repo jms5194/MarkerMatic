@@ -1,7 +1,8 @@
 import os
 import platform
-import logger_config
+
 import constants
+import logger_config
 
 
 class Updater:

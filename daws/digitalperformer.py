@@ -3,9 +3,8 @@ import time
 from typing import Any, Callable, overload
 
 from pubsub import pub
-from pythonosc import tcp_client, osc_message_builder
-
-from zeroconf import Zeroconf, ServiceInfo
+from pythonosc import osc_message_builder, tcp_client
+from zeroconf import ServiceInfo, Zeroconf
 
 import constants
 from constants import PlaybackState, PyPubSubTopics, TransportAction

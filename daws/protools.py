@@ -3,14 +3,13 @@ import time
 from typing import Any, Callable, overload
 
 import grpc
-import grpc._channel
 import ptsl
 from grpc import ChannelConnectivity
 from ptsl import PTSL_pb2 as pt
 from pubsub import pub
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Daw, DawFeature
@@ -108,31 +107,112 @@ class ProTools(Daw):
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
-            try:
-                all_memory_locs = self.pt_engine_connection.get_memory_locations()
-                last_memory_loc = all_memory_locs[-1]
-                if last_memory_loc.name != marker_name:
-                    self.pt_engine_connection.edit_memory_location(
-                        location_number=last_memory_loc.number,
-                        name=marker_name,
-                        start_time=last_memory_loc.start_time,
-                        end_time=last_memory_loc.end_time,
-                        time_properties=last_memory_loc.time_properties,
-                        reference=last_memory_loc.reference,
-                        general_properties=last_memory_loc.general_properties,
-                        comments=last_memory_loc.comments,
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
                     )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
+            try:
+                # Since we can only rename markers by targeting the number, we need to try to verify that the
+                # marker we've placed is consecutive to the second most high marker. If it is not,
+                # markers with high indices may have been put into the session and we need to discover the
+                # correct one that we've placed.
+
+                all_memory_locs = self.pt_engine_connection.get_memory_locations()
+                # Initial check to make sure there are enough markers in the session to bother.
+                if len(all_memory_locs) >= 2:
+                    last_memory_loc = all_memory_locs[-1]
+                    second_last_memory_loc = all_memory_locs[-2]
+                    # If the number of the markers is consecutive, go ahead and validate whether
+                    # the name was validated or not.
+                    if second_last_memory_loc.number == last_memory_loc.number - 1:
+                        if last_memory_loc.name != marker_name:
+                            self.pt_engine_connection.edit_memory_location(
+                                location_number=last_memory_loc.number,
+                                name=marker_name,
+                                start_time=last_memory_loc.start_time,
+                                end_time=last_memory_loc.end_time,
+                                time_properties=last_memory_loc.time_properties,
+                                reference=last_memory_loc.reference,
+                                general_properties=last_memory_loc.general_properties,
+                                comments=last_memory_loc.comments,
+                            )
+                    else:
+                        # If the marker numbers are not consecutive, we need to find the last
+                        # pair of markers that have consecutive numbers, unless there are only
+                        # two markers in the session, in which case the lowest marker is likely
+                        # our newest marker
+                        logger.info("Additional out of order markers found in session")
+                        if len(all_memory_locs) == 2:
+                            last_memory_loc = all_memory_locs[-2]
+                            if last_memory_loc.name != marker_name:
+                                self.pt_engine_connection.edit_memory_location(
+                                    location_number=last_memory_loc.number,
+                                    name=marker_name,
+                                    start_time=last_memory_loc.start_time,
+                                    end_time=last_memory_loc.end_time,
+                                    time_properties=last_memory_loc.time_properties,
+                                    reference=last_memory_loc.reference,
+                                    general_properties=last_memory_loc.general_properties,
+                                    comments=last_memory_loc.comments,
+                                )
+                        else:
+                            # Cast all_memory_locs to be a python list from its
+                            # RepeatedCompositeContainer incoming format
+                            list_memory_locs = list(all_memory_locs)
+                            # Let's find the highest number pair of markers that
+                            # have consecutive marker numbers.
+                            for item in reversed(list_memory_locs):
+                                index_position = list_memory_locs.index(item)
+                                if len(list_memory_locs) > index_position + 1:
+                                    comp_item = list_memory_locs[index_position + 1]
+                                    if item.number + 1 == comp_item.number:
+                                        if comp_item.name != marker_name:
+                                            self.pt_engine_connection.edit_memory_location(
+                                                location_number=comp_item.number,
+                                                name=marker_name,
+                                                start_time=comp_item.start_time,
+                                                end_time=comp_item.end_time,
+                                                time_properties=comp_item.time_properties,
+                                                reference=comp_item.reference,
+                                                general_properties=comp_item.general_properties,
+                                                comments=comp_item.comments,
+                                            )
+                                        break
+                else:
+                    last_memory_loc = all_memory_locs[-1]
+                    if last_memory_loc.name != marker_name:
+                        self.pt_engine_connection.edit_memory_location(
+                            location_number=last_memory_loc.number,
+                            name=marker_name,
+                            start_time=last_memory_loc.start_time,
+                            end_time=last_memory_loc.end_time,
+                            time_properties=last_memory_loc.time_properties,
+                            reference=last_memory_loc.reference,
+                            general_properties=last_memory_loc.general_properties,
+                            comments=last_memory_loc.comments,
+                        )
+
             except ptsl.errors.CommandError as e:
                 if e.error_type == pt.PT_InvalidParameter:
                     logger.error("Bad parameter input to create_memory_location")
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
+            except Exception as e:
+                logger.error(f"Unable to create memory location: {e}")
 
     def _incoming_transport_action(self, transport_action: TransportAction) -> None:
         # If transport actions are received from the console, send to Pro Tools
@@ -198,14 +278,18 @@ class ProTools(Daw):
                         ):
                             self._pro_tools_stop()
                             self._pro_tools_play()
+                except grpc.RpcError as e:
+                    if (
+                        e.code() == grpc.StatusCode.UNAVAILABLE
+                        or e.code() == grpc.StatusCode.NOT_FOUND
+                    ):
+                        pub.sendMessage(
+                            PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                        )
+                        logger.error("Pro Tools connection lost, Retrying connection")
+                        self._open_protools_connection()
                 except Exception as e:
-                    logger.error(f"Pro Tools responded with an error: {e}")
-                except grpc._channel._InactiveRpcError:
-                    pub.sendMessage(
-                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
-                    )
-                    logger.error("Pro Tools connection lost, Retrying connection")
-                    self._open_protools_connection()
+                    logger.error(f"Attempting to find the marker in PT resulted in an error: {e}")
 
     def _goto_marker_by_loc(self, memory_loc: pt.MemoryLocation) -> None:
         """Jump playhead to the given memory location"""
@@ -215,20 +299,34 @@ class ProTools(Daw):
             loc_type = "TLType_BarsBeats"
         with self.pt_send_lock:
             try:
-                self.pt_engine_connection.set_timeline_selection(in_time=match_loc_time, location_type=loc_type)
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+                self.pt_engine_connection.set_timeline_selection(
+                    in_time=match_loc_time, location_type="TLType_BarsBeats"
+                )
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
 
     def _get_current_transport_state(self):
         with self.pt_send_lock:
             try:
                 return self.pt_engine_connection.transport_state()
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
 
     def _pro_tools_arm_all(self) -> None:
         print("Arming all tracks")
@@ -243,9 +341,16 @@ class ProTools(Daw):
                 self.pt_engine_connection.set_track_record_enable_state(
                     *track_names, new_state=True
                 )
-            except grpc._channel._InactiveRpcError:
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
             return None
 
     def _pro_tools_disarm_all(self) -> None:
@@ -261,9 +366,16 @@ class ProTools(Daw):
                 self.pt_engine_connection.set_track_record_enable_state(
                     *track_names, new_state=False
                 )
-            except grpc._channel._InactiveRpcError:
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
             return None
 
     def _pro_tools_play(self):
@@ -285,10 +397,16 @@ class ProTools(Daw):
                                 "Play command failed, no session is currently open"
                             )
                             return False
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
             return None
 
     def _pro_tools_stop(self):
@@ -310,10 +428,16 @@ class ProTools(Daw):
                                 "Play command failed, no session is currently open"
                             )
                             return False
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
             return None
 
     def _pro_tools_rec(self):
@@ -334,10 +458,16 @@ class ProTools(Daw):
                                     "Play command failed, no session is currently open"
                                 )
                                 return False
-            except grpc._channel._InactiveRpcError:
-                pub.sendMessage(PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False)
-                logger.error("Pro Tools connection lost, Retrying connection")
-                self._open_protools_connection()
+            except grpc.RpcError as e:
+                if (
+                    e.code() == grpc.StatusCode.UNAVAILABLE
+                    or e.code() == grpc.StatusCode.NOT_FOUND
+                ):
+                    pub.sendMessage(
+                        PyPubSubTopics.DAW_CONNECTION_STATUS, connected=False
+                    )
+                    logger.error("Pro Tools connection lost, Retrying connection")
+                    self._open_protools_connection()
             return None
 
     def _shutdown_servers(self) -> None:

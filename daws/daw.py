@@ -1,7 +1,9 @@
-from typing import Callable
 import threading
-from pubsub import pub
 from enum import IntEnum, auto
+from typing import Callable
+
+from pubsub import pub
+
 from constants import PyPubSubTopics
 
 

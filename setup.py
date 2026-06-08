@@ -55,6 +55,7 @@ OPTIONS = {
         "SUFeedURL": su_feed_url,
         "SUPublicEDKey": constants.SPARKLE_PUBLIC_ED_KEY,
     },
+    "includes": ["mido.backends.rtmidi"],
     "packages": ["google.protobuf", "google._upb", "zeroconf"],
 }
 

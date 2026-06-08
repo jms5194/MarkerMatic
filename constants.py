@@ -13,9 +13,9 @@ CONFIG_FILENAME_LEGACY = "settingsV3.ini"
 ICON_MAC_FILENAME = "markermaticicon.icns"
 ICON_WIN_FILENAME = "markermaticicon.ico"
 LOG_FILENAME = "MarkerMatic.log"
-VERSION = "4.4.3 (Build 1036)"
-VERSION_EXTRA = "4.4.3.1036"
-VERSION_SHORT = "4.4.3"
+VERSION = "4.6.0 (Build 1041)"
+VERSION_EXTRA = "4.6.0.1041"
+VERSION_SHORT = "4.6.0"
 WEBSITE = "https://markermatic.com"
 WEBSITE_DOCUMENTATION = "https://markermatic.com/docs"
 WEBSITE_LICENSE = "https://markermatic.com/license"
@@ -42,6 +42,10 @@ MAX_IP_LENGTH = 45
 
 MIDI_PORT_NONE = "None"
 
+# (Default) Network Ports
+PORT_EXTERNAL_CONTROL_RECEIVE = 49103
+PORT_REAPER_RECEIVE = 49101
+PORT_REAPER_SEND = 49102
 PORT_STUDER_EMBER_RECEIVE = 49104
 
 WXPYTHON_USE_NATIVE_BUTTONS = False
