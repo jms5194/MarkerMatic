@@ -91,26 +91,17 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
             self.digico_dispatcher.map("/rec_enable_toggle", self._macro_arm_handler)
-            self.digico_dispatcher.map("/Console/Name", self._console_name_handler)
+            self.digico_dispatcher.map("/strip/name/1", self._message_received)
 
 
-    def _console_name_handler(self, osc_address: str, console_name: str) -> None:
-        # Receives the console name response and updates the UI.
-        from app_settings import settings
-
-        if settings.forwarder_enabled:
-            try:
-                self.repeater_client.send_message(osc_address, console_name)
-            except Exception as e:
-                logger.error(f"Console name cannot be repeated: {e}")
+    @staticmethod
+    def _message_received(*_) -> None:
         try:
             wx.CallAfter(
-                pub.sendMessage,
-                PyPubSubTopics.CONSOLE_CONNECTED,
-                consolename=console_name,
+                pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
             )
         except Exception as e:
-            logger.error(f"Console Name Handler Error: {e}")
+            logger.error(f"Message reception error: {e}")
 
     @staticmethod
     def _macro_play_handler(osc_address: str, *args) -> None:
@@ -167,7 +158,7 @@ class DiGiCoLiveTrax(Console):
     def heartbeat(self) -> None:
         with self.console_send_lock:
             assert isinstance(self.console_client, udp_client.UDPClient)
-            self.console_client.send_message("/Console/Name/?", None)
+            self.console_client.send_message("/request_names", None)
 
     def _shutdown_servers(self) -> None:
         try:
