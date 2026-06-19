@@ -90,7 +90,7 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/transport_play", self._macro_play_handler)
             self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
-            self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
+            self.digico_dispatcher.map("/rec_enable_toggle", self._macro_arm_handler)
             self.digico_dispatcher.map("/Console/Name", self._console_name_handler)
 
 
