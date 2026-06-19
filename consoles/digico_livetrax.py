@@ -85,13 +85,32 @@ class DiGiCoLiveTrax(Console):
 
     def _receive_console_OSC(self, macros_enabled=True) -> None:
         """Receives and distributes OSC from Digico, based on matching OSC values"""
-        self.digico_dispatcher.map("/snapshots", self.snapshot_OSC_handler)
+        self.digico_dispatcher.map("/snapshot", self.snapshot_OSC_handler)
         if macros_enabled:
             self.digico_dispatcher.map("/transport_play", self._macro_play_handler)
             self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
             self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
             self.digico_dispatcher.map("/transport_arm", self._macro_arm_handler)
-            self.digico_dispatcher.map("/strip/name/1", self._console_heartbeat_handler)
+            self.digico_dispatcher.map("/Console/Name", self._console_name_handler)
+
+
+    def _console_name_handler(self, osc_address: str, console_name: str) -> None:
+        # Receives the console name response and updates the UI.
+        from app_settings import settings
+
+        if settings.forwarder_enabled:
+            try:
+                self.repeater_client.send_message(osc_address, console_name)
+            except Exception as e:
+                logger.error(f"Console name cannot be repeated: {e}")
+        try:
+            wx.CallAfter(
+                pub.sendMessage,
+                PyPubSubTopics.CONSOLE_CONNECTED,
+                consolename=console_name,
+            )
+        except Exception as e:
+            logger.error(f"Console Name Handler Error: {e}")
 
     @staticmethod
     def _macro_play_handler(osc_address: str, *args) -> None:
@@ -135,7 +154,6 @@ class DiGiCoLiveTrax(Console):
         )
 
     def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
-        self._message_received()
         # 1st arg is current snapshot string
         cue_payload = args[0]
 
@@ -149,7 +167,7 @@ class DiGiCoLiveTrax(Console):
     def heartbeat(self) -> None:
         with self.console_send_lock:
             assert isinstance(self.console_client, udp_client.UDPClient)
-            self.console_client.send_message("/request_names", None)
+            self.console_client.send_message("/Console/Name/?", None)
 
     def _shutdown_servers(self) -> None:
         try:
