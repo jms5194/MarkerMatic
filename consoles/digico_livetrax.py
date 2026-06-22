@@ -46,18 +46,6 @@ class DiGiCoLiveTrax(Console):
             "console_connection_thread", self._build_digico_osc_servers
         )
 
-    def _console_heartbeat_handler(self, osc_address: str,
-                                   strip_1_name: str,
-                                   strip_1_int: int) -> None:
-        # Receives the console response and updates the UI.
-        try:
-            wx.CallAfter(
-                pub.sendMessage,
-                PyPubSubTopics.CONSOLE_CONNECTED
-            )
-        except Exception as e:
-            logger.error(f"Console Heartbeat Handler Error: {e}")
-
     def _build_digico_osc_servers(self) -> None:
         # Connect to the Digico console
         logger.info("Starting Digico OSC server")
@@ -98,7 +86,8 @@ class DiGiCoLiveTrax(Console):
     def _message_received(*_) -> None:
         try:
             wx.CallAfter(
-                pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
+                pub.sendMessage,
+                PyPubSubTopics.CONSOLE_CONNECTED
             )
         except Exception as e:
             logger.error(f"Message reception error: {e}")
