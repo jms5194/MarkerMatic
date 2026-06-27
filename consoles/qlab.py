@@ -13,7 +13,7 @@ from . import Console
 
 
 class QLab(Console):
-    fixed_send_port: int = 53000  # pyright: ignore[reportIncompatibleVariableOverride]
+    default_send_port: int = 53000
     fixed_receive_port: int = 53001
     type = "QLab"
     supported_features = []

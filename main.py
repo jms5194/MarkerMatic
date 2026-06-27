@@ -851,6 +851,15 @@ class PrefsPanel(wx.Panel):
         self.console: Console = CONSOLES[event.GetString()]
         self.update_console_supported_features(self.console)
 
+        for default, control in [
+            (self.console.default_send_port, self.console_send_port_control),
+            (self.console.default_receive_port, self.console_rcv_port_control),
+        ]:
+            if default is not None:
+                control.SetValue(str(default))
+                self.ports_modified = True
+        self.check_ports()
+
     def update_console_supported_features(self, console: Console) -> None:
         self.match_mode_label_only.Enabled = (
             Feature.CUE_NUMBER in console.supported_features

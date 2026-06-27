@@ -16,8 +16,10 @@ class Feature(IntEnum):
 
 
 class Console:
-    fixed_receive_port: Optional[int] = None
+    default_send_port: Optional[int] = None
+    default_receive_port: Optional[int] = None
     fixed_send_port: Optional[int] = None
+    fixed_receive_port: Optional[int] = None
     supported_features: List[Feature] = []
     type = "Unknown"
 

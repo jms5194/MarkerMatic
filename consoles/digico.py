@@ -70,6 +70,8 @@ class RawOSCServer(ThreadingOSCUDPServer):
 
 
 class DiGiCo(Console):
+    default_send_port = 8001
+    default_receive_port = 8000
     type = "DiGiCo"
     supported_features = [
         Feature.CUE_NUMBER,
