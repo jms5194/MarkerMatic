@@ -1,11 +1,9 @@
 import threading
-import time
 from typing import Any, Callable
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
-import constants
 import wx
 import utilities
 from constants import ArmedAction, PyPubSubTopics, TransportAction
@@ -81,14 +79,10 @@ class DiGiCoLiveTrax(Console):
             self.digico_dispatcher.map("/rec_enable_toggle", self._macro_arm_handler)
             self.digico_dispatcher.map("/strip/name/1", self._message_received)
 
-
     @staticmethod
     def _message_received(*_) -> None:
         try:
-            wx.CallAfter(
-                pub.sendMessage,
-                PyPubSubTopics.CONSOLE_CONNECTED
-            )
+            wx.CallAfter(pub.sendMessage, PyPubSubTopics.CONSOLE_CONNECTED)
         except Exception as e:
             logger.error(f"Message reception error: {e}")
 

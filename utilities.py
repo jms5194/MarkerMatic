@@ -1,5 +1,4 @@
 import argparse
-import functools
 import inspect
 import ipaddress
 import logging
