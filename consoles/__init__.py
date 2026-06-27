@@ -8,11 +8,13 @@ from .yamaha import Yamaha
 from .dmitri import DMitri
 from .nadia import Nadia
 from .qlab import QLab
+from .digico_livetrax import DiGiCoLiveTrax
 
 CONSOLES = {
     "Behringer X32": BehringerX32,
     "Behringer X Air": BehringerXAir,
     "DiGiCo": DiGiCo,
+    "DiGiCo - LiveTrax": DiGiCoLiveTrax,
     "Studer Vista": StuderVista,
     "TheatreMix": TheatreMix,
     "Yamaha": Yamaha,
@@ -28,6 +30,7 @@ __all__ = [
     "BehringerX32",
     "BehringerXAir",
     "DiGiCo",
+    "DiGiCoLiveTrax",
     "StuderVista",
     "TheatreMix",
     "Yamaha",
