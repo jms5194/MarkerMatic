@@ -13,7 +13,7 @@ from . import Console, Feature
 
 
 class DiGiCoLiveTrax(Console):
-    fixed_receive_port = 3819
+    default_receive_port = 3819
     type = "DiGiCo - LiveTrax"
     supported_features = [
         Feature.CUE_NUMBER,
