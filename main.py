@@ -11,9 +11,10 @@ import wx.lib.buttons
 import wx.svg
 import wx.svg._nanosvg
 from pubsub import pub
-from showinfm import show_in_file_manager  # pyright: ignore[reportPrivateImportUsage]
+from showinfm.showinfm import show_in_file_manager
 
 import constants
+import external_control.midi as ec_midi
 import ui
 import updates
 import utilities
@@ -21,8 +22,7 @@ from app_settings import settings, validate_cue_list_player
 from consoles import CONSOLES, Console, Feature
 from constants import PlaybackState, PyPubSubTopics
 from daws import DAWS, Daw, DawFeature
-import external_control
-from logger_config import logger, get_log_file
+from logger_config import get_log_file, logger
 from utilities import DawConsoleBridge
 
 HALF_INTERNAL_SPACING = 5
@@ -31,10 +31,12 @@ EXTERNAL_SPACING = 15
 
 LABEL_ROW = 1
 
+midi_impl: ec_midi.MidiImplementation = ec_midi.load_midi()
+
 
 class MainWindow(wx.Frame):
     # Bringing the logic from utilities as an attribute of MainWindow
-    BridgeFunctions = DawConsoleBridge()
+    BridgeFunctions = DawConsoleBridge(midi_impl)
     _app_icons: wx.IconBundle
 
     def __init__(self):
@@ -55,6 +57,8 @@ class MainWindow(wx.Frame):
         self.updater = updates.Updater()
         self.updater.register_request_stop_callback(self.on_close_for_update)
         updates_menuitem = None
+
+        utilities.parse_arguments(exit_callback=self.close_app)
 
         menu_bar = wx.MenuBar()
         if platform.system() == "Darwin":
@@ -156,7 +160,9 @@ class MainWindow(wx.Frame):
         cur_pos = self.GetTopLevelParent().GetPosition()
         self.BridgeFunctions.update_pos_in_config(cur_pos)
 
-        if isinstance(event, wx.CommandEvent) or event.CanVeto():
+        if (
+            isinstance(event, wx.CommandEvent) or event.CanVeto()
+        ) and settings.ask_before_closing:
             logger.info("Confirming if the user would like to close")
             dlg = wx.MessageDialog(
                 self,
@@ -171,15 +177,22 @@ class MainWindow(wx.Frame):
                     event.Veto()
                 return
         self.updater.stop()
-        self.finish_app_close()
+        self.close_app()
 
     def on_close_for_update(self, *_) -> None:
         """Trigger a shutdown of the application, when requested by the
         updater"""
         logger.info("Requested to close for an update")
-        self.finish_app_close()
+        self.close_app()
 
-    def finish_app_close(self) -> None:
+    def close_app(self) -> None:
+        """Close the app cleanly, making sure we're in the main thread"""
+        if wx.IsMainThread():  # pyright: ignore[reportCallIssue]
+            self._finish_app_close()
+        else:
+            wx.CallAfter(self._finish_app_close)
+
+    def _finish_app_close(self) -> None:
         """Finish the shutdown procedures, and close the application GUI"""
         closed_complete = self.BridgeFunctions.close_servers()
         if closed_complete:
@@ -662,6 +675,13 @@ class PrefsPanel(wx.Panel):
         )
         self.always_on_top_checkbox.SetValue(settings.always_on_top)
         app_settings_section.Add(self.always_on_top_checkbox, flag=wx.EXPAND)
+        # Ask Before Closing
+        app_settings_section.Add(width=-1, height=-1)
+        self.ask_before_closing_checkbox = wx.CheckBox(
+            notebook_application, label="Ask before closing"
+        )
+        self.ask_before_closing_checkbox.SetValue(settings.ask_before_closing)
+        app_settings_section.Add(self.ask_before_closing_checkbox, flag=wx.EXPAND)
         # Initial Mode
         app_settings_section.Add(
             wx.StaticText(
@@ -748,9 +768,9 @@ class PrefsPanel(wx.Panel):
             notebook_external, style=wx.TE_CENTER
         )
         # Set the Choice's options based off the cached values
-        self.update_midi_ports(external_control.get_midi_ports())
+        self.update_midi_ports(midi_impl.midi_ports)
         # Trigger a refresh with the callback, which will update the Choice
-        external_control.refresh_midi_ports(self.update_midi_ports)
+        midi_impl.refresh_midi_ports(self.update_midi_ports)
         external_control_section.Add(
             self.external_control_midi_port_control,
             flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL,
@@ -795,9 +815,19 @@ class PrefsPanel(wx.Panel):
         self.SetSizer(panel_sizer)
         self.Fit()
 
-        # Update supported features with the currently set console and DAW
+        # All port controls should get added here so we can validate
+        self.port_controls = (
+            self.console_send_port_control,
+            self.console_rcv_port_control,
+            self.repeater_panel.send_port_control,
+            self.repeater_panel.receive_port_control,
+            self.external_control_osc_port_control,
+        )
+
+        # Update supported features
         self.update_console_supported_features(console)
         self.update_daw_supported_features(daw)
+        self.update_midi_supported()
 
         # Prefs Window Bindings
         self.Bind(wx.EVT_BUTTON, self.ok_button_pressed, ok_button)
@@ -807,13 +837,28 @@ class PrefsPanel(wx.Panel):
         self.console_cue_list_player_control.Bind(
             wx.EVT_KILL_FOCUS, self.check_cue_list_player
         )
+        for port_control in self.port_controls:
+            port_control.Bind(wx.EVT_KILL_FOCUS, self.check_ports)
+            port_control.Bind(wx.EVT_TEXT, self.modified_ports)
         self.console_type_choice.Bind(wx.EVT_CHOICE, self.changed_console_type)
         self.daw_type_choice.Bind(wx.EVT_CHOICE, self.changed_daw_type)
         self.Show()
 
+        self.ports_modified = True
+        self.check_ports()
+
     def changed_console_type(self, event: wx.CommandEvent) -> None:
         self.console: Console = CONSOLES[event.GetString()]
         self.update_console_supported_features(self.console)
+
+        for default, control in [
+            (self.console.default_send_port, self.console_send_port_control),
+            (self.console.default_receive_port, self.console_rcv_port_control),
+        ]:
+            if default is not None:
+                control.SetValue(str(default))
+                self.ports_modified = True
+        self.check_ports()
 
     def update_console_supported_features(self, console: Console) -> None:
         self.match_mode_label_only.Enabled = (
@@ -857,6 +902,11 @@ class PrefsPanel(wx.Panel):
         if DawFeature.NAME_ONLY_MATCH not in daw.supported_features:
             self.match_mode_label_only.SetValue(False)
 
+    def update_midi_supported(self) -> None:
+        """Enables/disables MIDI-related controls if MIDI support is loaded"""
+        self.external_control_midi_port_control.Enabled = midi_impl.midi_supported
+        self.mmc_control_enabled_checkbox.Enabled = midi_impl.midi_supported
+
     def cancel_button_pressed(self, _) -> None:
         """Closes the Preferences dialog without saving"""
         self.Parent.Destroy()
@@ -884,6 +934,7 @@ class PrefsPanel(wx.Panel):
                 self.console_cue_list_player_control.GetValue()
             )
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
+            settings.ask_before_closing = self.ask_before_closing_checkbox.GetValue()
             settings.initial_mode = [
                 PlaybackState[x]
                 for x in PlaybackState.__members__
@@ -977,6 +1028,37 @@ class PrefsPanel(wx.Panel):
             dlg.ShowModal()
             dlg.Destroy()
             wx.CallAfter(self.console_cue_list_player_control.SetFocus)
+
+    def modified_ports(self, _: wx.CommandEvent) -> None:
+        """Sets a flag that a port has been modified"""
+        self.ports_modified = True
+        print(True)
+
+    def check_ports(self, focus_event: Optional[wx.FocusEvent] = None) -> None:
+        """Validates the port number fields to make sure we don't have any
+        duplicates, and displays an alert dialog if we do"""
+        if self.ports_modified:
+            self.ports_modified = False
+            known_ports: set[str] = set()
+            for port_control in self.port_controls:
+                port = str(port_control.GetValue())
+                if port in known_ports:
+                    logger.error(f"Port number {port} is in use in multiple fields")
+                    dlg = wx.MessageDialog(
+                        self,
+                        f"Port number {port} is already in use. Please choose a different port number.",
+                        constants.APPLICATION_NAME,
+                        wx.OK,
+                    )
+                    dlg.ShowModal()
+                    dlg.Destroy()
+                    if isinstance(focus_event, wx.FocusEvent) and isinstance(
+                        focus_event.EventObject, wx.Window
+                    ):
+                        wx.CallAfter(focus_event.EventObject.SetFocus)
+                    self.ports_modified = False
+                    break
+                known_ports.add(port)
 
     def update_midi_ports(self, ports: list[str]) -> None:
         def update(self: PrefsPanel, ports: list[str]) -> None:
@@ -1099,8 +1181,8 @@ if __name__ == "__main__":
         app.SetAppName(constants.APPLICATION_NAME)
         app.SetAppDisplayName(constants.APPLICATION_NAME)
         frame = MainWindow()
+        midi_impl.refresh_midi_ports()
         app.SetTopWindow(frame)
-        external_control.refresh_midi_ports()
         app.MainLoop()
     except Exception as e:
         logger.critical(f"Fatal Error: {e}", exc_info=True)

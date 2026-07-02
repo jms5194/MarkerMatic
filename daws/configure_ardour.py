@@ -1,12 +1,14 @@
 import os
-import shutil
-import xml.etree.ElementTree
-from logger_config import logger
-import psutil
-import sys
-import xml.etree.ElementTree as ET
-import time
 import re
+import shutil
+import sys
+import time
+import xml.etree.ElementTree
+import xml.etree.ElementTree as ET
+
+import psutil
+
+from logger_config import logger
 
 
 def backup_config_file(config_file_path):

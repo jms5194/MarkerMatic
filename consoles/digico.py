@@ -8,9 +8,9 @@ from pythonosc import dispatcher, osc_server, udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import ThreadingOSCUDPServer
 
-import external_control
+import external_control.osc as ec_osc
 import utilities
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
 from . import Console, Feature
@@ -70,6 +70,8 @@ class RawOSCServer(ThreadingOSCUDPServer):
 
 
 class DiGiCo(Console):
+    default_send_port = 8001
+    default_receive_port = 8000
     type = "DiGiCo"
     supported_features = [
         Feature.CUE_NUMBER,
@@ -161,7 +163,7 @@ class DiGiCo(Console):
             )
             self.digico_dispatcher.map("/Macros/name", self._macro_name_handler)
         self.digico_dispatcher.map("/Console/Name", self._console_name_handler)
-        external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
+        ec_osc.map_osc_external_control_dispatcher(self.digico_dispatcher)
         self.digico_dispatcher.set_default_handler(self._forward_OSC)
 
     def send_to_console(self, osc_address: str, *args) -> None:

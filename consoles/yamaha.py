@@ -1,8 +1,10 @@
 import socket
 import threading
 import time
-from typing import Any, Callable
+from datetime import datetime, timedelta
+from typing import Any, Callable, Optional
 
+import wx
 from pubsub import pub
 
 import constants
@@ -13,6 +15,7 @@ from . import Console, Feature
 
 DELIMITER = b"\n"
 BUFFER_SIZE = 4096
+SCENE_COOLDOWN = timedelta(seconds=1)
 SCENE_TYPES = ("MIXER:Lib/Scene", "scene_a")
 
 
@@ -44,6 +47,14 @@ class Yamaha(Console):
         super().__init__()
         self._client_socket: socket.socket
         self._connection_established = threading.Event()
+        self.product_name: Optional[str] = None
+        self._rcp_matchers = (
+            self._match_internal_scene_recall,
+            self._match_product_name,
+            self._match_scene_info,
+        )
+        self._last_scene_internal_id: Optional[str] = None
+        self._last_scene_cooled = datetime.min
 
     def start_managed_threads(
         self, start_managed_thread: Callable[[str, Any], None]
@@ -73,16 +84,18 @@ class Yamaha(Console):
                 buff = Buffer(self._client_socket, self._shutdown_server_event)
                 self._connection_established.set()
                 while not self._shutdown_server_event.is_set():
+                    if self.product_name is None:
+                        self._request_product_name()
                     line = buff.get_line()
+                    logger.debug(f"Yamaha RCP: {line}")
                     if line is None:
                         logger.error(f"{self.type} connection reset")
                         pub.sendMessage(PyPubSubTopics.CONSOLE_DISCONNECTED)
                         break
                     # Check the line for matches against known message types
-                    if self._match_internal_scene_recall(line):
-                        pass
-                    elif self._match_scene_info(line):
-                        pass
+                    for rcp_matcher in self._rcp_matchers:
+                        if rcp_matcher(line):
+                            break
 
         logger.info(f"Closing connection to {self.type}")
 
@@ -97,6 +110,16 @@ class Yamaha(Console):
         for scene_type in SCENE_TYPES:
             if line.startswith(f"NOTIFY sscurrent_ex {scene_type}"):
                 internal_id = line.rsplit(maxsplit=1)[1]
+                if (
+                    internal_id == self._last_scene_internal_id
+                    and datetime.now() <= self._last_scene_cooled
+                ):
+                    logger.debug(
+                        f"Cooldown hasn't expired yet, will be cool after {self._last_scene_cooled}"
+                    )
+                    return False
+                self._last_scene_internal_id = internal_id
+                self._last_scene_cooled = datetime.now() + SCENE_COOLDOWN
                 logger.info(
                     f"{self.type} internal {scene_type} scene {internal_id} recalled"
                 )
@@ -126,6 +149,28 @@ class Yamaha(Console):
                 cue_payload = f"{scene_number} {scene_name}"
                 pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
                 return True
+        return False
+
+    def _request_product_name(self) -> None:
+        """Sends a request for the connected device's product name"""
+        self._client_socket.sendall(str.encode("devinfo productname\n"))
+
+    def _match_product_name(
+        self,
+        line: str,
+    ) -> bool:
+        """Checks to see if the line matches the the product's name.
+
+        Returns True if matched, False otherwise."""
+
+        if line.startswith("OK devinfo productname"):
+            self.product_name = line.rsplit('"', maxsplit=2)[1]
+            wx.CallAfter(
+                pub.sendMessage,
+                PyPubSubTopics.CONSOLE_CONNECTED,
+                consolename=self.product_name,
+            )
+            return True
         return False
 
     def heartbeat(self) -> None:

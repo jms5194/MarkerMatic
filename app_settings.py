@@ -13,12 +13,13 @@ class ThreadSafeSettings:
     def __init__(self):
         self._lock = threading.Lock()
         self._settings = {
+            "ask_before_closing": True,
             "console_ip": "192.0.2.11",
             "repeater_ip": "192.0.2.21",
             "repeater_port": 9999,
             "repeater_receive_port": 9998,
-            "reaper_port": 49102,
-            "reaper_receive_port": 49101,
+            "reaper_port": constants.PORT_REAPER_SEND,
+            "reaper_receive_port": constants.PORT_REAPER_RECEIVE,
             "console_port": 8001,
             "receive_port": 8000,
             "forwarder_enabled": False,
@@ -31,11 +32,21 @@ class ThreadSafeSettings:
             "daw_type": Reaper.type,
             "always_on_top": False,
             "mmc_control_enabled": False,
-            "external_control_osc_port": 49103,
+            "external_control_osc_port": constants.PORT_EXTERNAL_CONTROL_RECEIVE,
             "external_control_midi_port": constants.MIDI_PORT_NONE,
             "allow_loading_while_playing": False,
             "cue_list_player": 1,
         }
+
+    @property
+    def ask_before_closing(self) -> bool:
+        with self._lock:
+            return self._settings["ask_before_closing"]
+
+    @ask_before_closing.setter
+    def ask_before_closing(self, value: bool) -> None:
+        with self._lock:
+            self._settings["ask_before_closing"] = value
 
     @property
     def console_ip(self) -> str:
@@ -319,6 +330,7 @@ class ThreadSafeSettings:
                 )
 
             boolean_properties = {
+                "ask_before_closing": "ask_before_closing",
                 "forwarder_enabled": "forwarder_enabled",
                 "name_only_match": "name_only_match",
                 "always_on_top": "always_on_top",

@@ -1,17 +1,20 @@
+import argparse
 import inspect
 import ipaddress
+import logging
 import os.path
 import platform
 import threading
 import time
-from typing import Callable, List
+from typing import Any, Callable, List, Optional
 
 import appdirs
 from configupdater import ConfigUpdater
 from pubsub import pub
 
 import constants
-import external_control
+import external_control.midi as ec_midi
+import external_control.osc as ec_osc
 from app_settings import settings
 from consoles import CONSOLES, Console
 from constants import PyPubSubTopics, TransportAction
@@ -34,13 +37,17 @@ class DawConsoleBridge:
     _console: Console
     _threads: List[threading.Thread] = list()
 
-    def __init__(self):
+    def __init__(
+        self,
+        midi_impl: ec_midi.MidiImplementation,
+    ):
         logger.info(f"Initializing DawConsoleBridge, Version {constants.VERSION}")
         logger.info(f"Platform: {platform.platform()}")
         self._shutdown_server_event = threading.Event()
         self._server_restart_lock = threading.Lock()
         self._console = Console()
         self._daw = Daw()
+        self.midi_impl = midi_impl
 
         # The path to the legacy (v3) configuration file, we only read this
         self._legacy_ini_path = os.path.join(
@@ -96,9 +103,12 @@ class DawConsoleBridge:
         cue_list_player,
         initial_mode=settings.initial_mode,
         macros_enabled=settings.macros_enabled,
+        ask_before_closing: Optional[bool] = None,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
+        if ask_before_closing is None:
+            ask_before_closing = settings.ask_before_closing
         logger.info("Updating configuration file")
         updater = ConfigUpdater()
         try:
@@ -109,6 +119,7 @@ class DawConsoleBridge:
             if not updater.has_section("main"):
                 logger.info("Adding main section to config file")
                 updater.add_section("main")
+            updater["main"]["ask_before_closing"] = str(ask_before_closing)
             updater["main"]["default_ip"] = con_ip
             updater["main"]["repeater_ip"] = rptr_ip
             updater["main"]["default_digico_send_port"] = str(con_send)
@@ -160,12 +171,12 @@ class DawConsoleBridge:
         with open(self._ini_path, "w") as file:
             updater.write(file, validate=False)
 
-    def start_managed_thread(self, attr_name: str, target: Callable) -> None:
-        if "stop_event" in inspect.getargs(target.__code__).args:
+    def start_managed_thread(self, name: str, target: Callable) -> None:
+        if "stop_event" in inspect.signature(target).parameters:
             kwargs = {"stop_event": self._shutdown_server_event}
         else:
             kwargs = None
-        thread = threading.Thread(target=target, kwargs=kwargs, daemon=True)
+        thread = threading.Thread(target=target, name=name, kwargs=kwargs, daemon=True)
         self._threads.append(thread)
         thread.start()
 
@@ -185,11 +196,9 @@ class DawConsoleBridge:
             self.console.start_managed_threads(self.start_managed_thread)
         else:
             logger.error("Console is not supported!")
+        self.start_managed_thread("external_osc_control", ec_osc.external_osc_control)
         self.start_managed_thread(
-            "external_osc_control", external_control.external_osc_control
-        )
-        self.start_managed_thread(
-            "external_midi_control", external_control.external_midi_control
+            "external_midi_control", self.midi_impl.external_midi_control
         )
 
     _console_lock = threading.Lock()
@@ -287,3 +296,28 @@ def get_resources_directory_path() -> str:
     if py2app_resource_path is not None:
         return py2app_resource_path
     return os.path.join(os.path.dirname(__file__), "resources")
+
+
+def parse_arguments(exit_callback: Callable[[], Any]) -> None:
+    """Parses arguments passed to the application, and takes the appropriate
+    actions"""
+    parser = argparse.ArgumentParser(prog=constants.APPLICATION_NAME)
+    parser.add_argument("-c", "--check-health", action="store_true")
+    parser.add_argument("-d", "--debug", action="store_true")
+    args = parser.parse_args()
+    if args.check_health:
+        check_health_thread = threading.Thread(
+            target=_do_check_health,
+            kwargs={"exit_callback": exit_callback},
+        )
+        check_health_thread.start()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
+
+def _do_check_health(exit_callback: Callable[[], Any]) -> None:
+    """Run the application health check- this currently just makes sure the
+    application launches and runs for a while, then exits cleanly"""
+    time.sleep(30)
+    logger.info("App survived for 30s, good job!")
+    exit_callback()

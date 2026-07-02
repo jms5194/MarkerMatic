@@ -14,6 +14,7 @@ from . import Console
 
 
 class StuderVista(Console):
+    default_send_port = 8087
     fixed_receive_port = constants.PORT_STUDER_EMBER_RECEIVE
     type = "Studer Vista"
     supported_features = []

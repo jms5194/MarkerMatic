@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           draft: true
@@ -31,7 +31,7 @@ jobs:
     name: Trigger CI Builds
     steps:
       - name: Trigger CI builds
-        run: 'curl --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
+        run: 'curl -m 10 --retry 10 --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
 
   build:
     # When create_release is finished
@@ -133,7 +133,7 @@ jobs:
       
           # Sign the outer app bundle last
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
-            --entitlements ../entitlements.plist \
+            --entitlements ../packaging/entitlements.plist \
             --options runtime --timestamp --force "MarkerMatic.app"
       
           codesign --verify --verbose=4 "MarkerMatic.app"

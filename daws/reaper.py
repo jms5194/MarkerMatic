@@ -6,10 +6,10 @@ from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
 import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
+from constants import ArmedAction, PlaybackState, PyPubSubTopics, TransportAction
 from logger_config import logger
 
-from . import Daw, configure_reaper, DawFeature
+from . import Daw, DawFeature, configure_reaper
 
 
 class Reaper(Daw):

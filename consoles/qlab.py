@@ -1,19 +1,19 @@
 import json
+import threading
 from typing import Any, Callable, Optional
 
 from pubsub import pub
 from pythonosc import dispatcher, osc_server, udp_client
 
-import threading
 import utilities
-from logger_config import logger
 from constants import PyPubSubTopics
+from logger_config import logger
 
 from . import Console
 
 
 class QLab(Console):
-    fixed_send_port: int = 53000  # pyright: ignore[reportIncompatibleVariableOverride]
+    default_send_port: int = 53000
     fixed_receive_port: int = 53001
     type = "QLab"
     supported_features = []

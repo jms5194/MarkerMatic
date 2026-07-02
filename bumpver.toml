@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "v4.4.1+1033"
+current_version = "v4.5.0+1044"
 version_pattern = "vMAJOR.MINOR.PATCH+BUILD"
 commit_message = "Bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
@@ -14,6 +14,10 @@ push = true
     'VERSION = "MAJOR.MINOR.PATCH (Build BUILD)"',
     'VERSION_EXTRA = "MAJOR.MINOR.PATCH.BUILD"',
     'VERSION_SHORT = "MAJOR.MINOR.PATCH"',
+]
+"LICENSE" = [
+    'Copyright (c) 2021-YYYY Justin Stasiw',
+    'Copyright (c) 2025-YYYY Liam Steckler',
 ]
 "packaging/innosetup.iss" = [
     '#define MyAppVersion "MAJOR.MINOR.PATCH (Build BUILD)"',

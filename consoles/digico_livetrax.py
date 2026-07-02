@@ -1,21 +1,20 @@
-import socket
+import threading
 from typing import Any, Callable
 
 from pubsub import pub
-from pythonosc.dispatcher import Dispatcher
-from pythonosc.osc_server import ThreadingOSCUDPServer
+from pythonosc import dispatcher, osc_server, udp_client
 
-import external_control
-import constants
-from constants import PlaybackState, PyPubSubTopics, TransportAction, ArmedAction
-from logger_config import logger
+import wx
 import utilities
+from constants import ArmedAction, PyPubSubTopics, TransportAction
+from logger_config import logger
 
 from . import Console, Feature
 
-class DiGiCo_LiveTrax(Console):
-    fixed_receive_port: int = 3819
-    type = "DiGiCo_LiveTrax"
+
+class DiGiCoLiveTrax(Console):
+    default_receive_port = 3819
+    type = "DiGiCo - LiveTrax"
     supported_features = [
         Feature.CUE_NUMBER,
         Feature.SEPERATE_RECEIVE_PORT,
@@ -24,13 +23,23 @@ class DiGiCo_LiveTrax(Console):
 
     def __init__(self):
         super().__init__()
+        self.console_send_lock = threading.Lock()
         self.digico_osc_server = None
+        self.last_armed_state = False
+        self._shutdown_server_event = threading.Event()
+        self._connected = threading.Event()
+        self._connection_check_lock = threading.Lock()
+        self._connection_timeout_counter = 0
+        self._daw_assumed_arm_state_lock = threading.Lock()
+        self._daw_assumed_arm_state = False
         pub.subscribe(self._shutdown_servers, PyPubSubTopics.SHUTDOWN_SERVERS)
+        pub.subscribe(self._shutdown_server_event.set, PyPubSubTopics.SHUTDOWN_SERVERS)
 
     def start_managed_threads(
-        self, start_managed_thread: Callable[[str, Callable[..., Any]], None]
+        self, start_managed_thread: Callable[[str, Any], None]
     ) -> None:
         logger.info("Starting OSC Server threads")
+        self._shutdown_server_event.clear()
         start_managed_thread(
             "console_connection_thread", self._build_digico_osc_servers
         )
@@ -40,10 +49,13 @@ class DiGiCo_LiveTrax(Console):
         logger.info("Starting Digico OSC server")
         from app_settings import settings
 
-        self.digico_dispatcher = Dispatcher()
+        self.console_client = udp_client.SimpleUDPClient(
+            settings.console_ip, settings.console_port
+        )
+        self.digico_dispatcher = dispatcher.Dispatcher()
         self._receive_console_OSC(macros_enabled=settings.macros_enabled)
         try:
-            self.digico_osc_server = ThreadingOSCUDPServer(
+            self.digico_osc_server = osc_server.ThreadingOSCUDPServer(
                 (
                     utilities.get_ip_listen_any(settings.console_ip),
                     settings.receive_port,
@@ -55,158 +67,81 @@ class DiGiCo_LiveTrax(Console):
         except Exception as e:
             logger.error(f"Digico OSC server startup error: {e}")
 
+    # Digico Functions
+
     def _receive_console_OSC(self, macros_enabled=True) -> None:
         """Receives and distributes OSC from Digico, based on matching OSC values"""
         self.digico_dispatcher.map("/snapshot", self.snapshot_OSC_handler)
         if macros_enabled:
-            self.digico_dispatcher.set_default_handler(self._macro_name_handler)
-        external_control.map_osc_external_control_dispatcher(self.digico_dispatcher)
+            self.digico_dispatcher.map("/transport_play", self._macro_play_handler)
+            self.digico_dispatcher.map("/transport_stop", self._macro_stop_handler)
+            self.digico_dispatcher.map("/add_marker", self._macro_marker_handler)
+            self.digico_dispatcher.map("/rec_enable_toggle", self._macro_arm_handler)
+            self.digico_dispatcher.map("/strip/name/1", self._message_received)
 
-    def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
-        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
+    @staticmethod
+    def _message_received(*_) -> None:
+        try:
+            wx.CallAfter(pub.sendMessage, PyPubSubTopics.CONSOLE_CONNECTED)
+        except Exception as e:
+            logger.error(f"Message reception error: {e}")
 
-        # Processes the current cue number
-        from app_settings import settings
+    @staticmethod
+    def _macro_play_handler(osc_address: str, *args) -> None:
+        pub.sendMessage(
+            PyPubSubTopics.TRANSPORT_ACTION,
+            transport_action=TransportAction.PLAY,
+        )
 
-        cue_payload = args[0]
-        
-        # if this cue is in a group, the cue number will have a "+" prepended
-        if cue_payload[0] == "+":
-            cue_payload = cue_payload[1:]
-        
-        logger.info(f"Digico recalled cue: {cue_payload}")
-        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+    @staticmethod
+    def _macro_stop_handler(osc_address: str, *args) -> None:
+        pub.sendMessage(
+            PyPubSubTopics.TRANSPORT_ACTION,
+            transport_action=TransportAction.STOP,
+        )
 
-    def _macro_name_handler(self, osc_address: str, *args) -> None:
-        pub.sendMessage(PyPubSubTopics.CONSOLE_CONNECTED)
+    def _macro_arm_handler(self, osc_address: str, *args) -> None:
+        # There's a better way to make this a toggle, I think.
+        # Lock to make sure we queue and process one at a time if it gets hit
+        # in quick succession
+        with self._daw_assumed_arm_state_lock:
+            if self._daw_assumed_arm_state:
+                pub.sendMessage(
+                    PyPubSubTopics.ARMED_ACTION,
+                    armed_action=ArmedAction.DISARM_ALL,
+                )
+            else:
+                pub.sendMessage(
+                    PyPubSubTopics.ARMED_ACTION,
+                    armed_action=ArmedAction.ARM_ALL,
+                )
+            # Toggle the assumed DAW arm state to the opposite value
+            self._daw_assumed_arm_state = not self._daw_assumed_arm_state
 
-        # If macros match names, then send behavior to Reaper
-        from app_settings import settings
-
-        macro_name = osc_address[1:]
-        logger.info(f"Macro {macro_name} received")
-        if macro_name in (
-            "daw,rec",
-            "daw, rec",
-            "reaper, rec",
-            "reaper,rec",
-            "reaper rec",
-            "rec",
-            "record",
-            "reaper, record",
-            "reaper record",
-        ):
-            pub.sendMessage(
-                PyPubSubTopics.TRANSPORT_ACTION,
-                transport_action=TransportAction.RECORD,
-            )
-        elif macro_name in (
-            "daw,stop",
-            "daw, stop",
-            "reaper, stop",
-            "reaper,stop",
-            "reaper stop",
-            "stop",
-            "transport_stop",
-        ):
-            pub.sendMessage(
-                PyPubSubTopics.TRANSPORT_ACTION,
-                transport_action=TransportAction.STOP,
-            )
-        elif macro_name in (
-            "daw,play",
-            "daw, play",
-            "reaper, play",
-            "reaper,play",
-            "reaper play",
-            "play",
-            "transport_play",
-        ):
-            pub.sendMessage(
-                PyPubSubTopics.TRANSPORT_ACTION,
-                transport_action=TransportAction.PLAY,
-            )
-        elif macro_name in (
-            "daw,marker",
-            "daw, marker",
-            "reaper, marker",
-            "reaper,marker",
-            "reaper marker",
-            "marker",
-            "add_marker",
-        ):
-            self.process_marker_macro()
-        elif macro_name in (
-            "mode,rec",
-            "mode,record",
-            "mode,recording",
-            "mode rec",
-            "mode record",
-            "mode recording",
-        ):
-            settings.marker_mode = PlaybackState.RECORDING
-            pub.sendMessage(
-                PyPubSubTopics.CHANGE_PLAYBACK_STATE,
-                selected_mode=PlaybackState.RECORDING,
-            )
-        elif macro_name in (
-            "mode,track",
-            "mode,tracking",
-            "mode,PB Track",
-            "mode track",
-            "mode tracking",
-            "mode PB Track",
-        ):
-            settings.marker_mode = PlaybackState.PLAYBACK_TRACK
-            pub.sendMessage(
-                PyPubSubTopics.CHANGE_PLAYBACK_STATE,
-                selected_mode=PlaybackState.PLAYBACK_TRACK,
-            )
-        elif macro_name in (
-            "mode,no track",
-            "mode,no tracking",
-            "mode no track",
-            "mode no tracking",
-        ):
-            settings.marker_mode = PlaybackState.PLAYBACK_NO_TRACK
-            pub.sendMessage(
-                PyPubSubTopics.CHANGE_PLAYBACK_STATE,
-                selected_mode=PlaybackState.PLAYBACK_NO_TRACK,
-            )
-        elif macro_name in (
-            "reaper, arm_all",
-            "reaper, arm",
-            "reaper arm_all",
-            "reaper arm",
-            "arm, all",
-            "arm,all",
-            "arm all",
-            "arm",
-        ):
-            pub.sendMessage(
-                PyPubSubTopics.ARMED_ACTION,
-                armed_action=ArmedAction.ARM_ALL,
-            )
-        elif macro_name in (
-            "reaper, disarm_all",
-            "reaper, disarm",
-            "reaper disarm_all",
-            "reaper disarm",
-            "disarm, all",
-            "disarm,all",
-            "disarm all",
-            "disarm",
-        ):
-            pub.sendMessage(
-                PyPubSubTopics.ARMED_ACTION,
-                armed_action=ArmedAction.DISARM_ALL,
-            )
+    def _macro_marker_handler(self, osc_address: str, *args) -> None:
+        self.process_marker_macro()
 
     @staticmethod
     def process_marker_macro():
         pub.sendMessage(
             PyPubSubTopics.PLACE_MARKER_WITH_NAME, marker_name="Marker from Console"
         )
+
+    def snapshot_OSC_handler(self, osc_address: str, *args) -> None:
+        # 1st arg is current snapshot string
+        cue_payload = args[0]
+
+        # Remove the leading + from snapshots that are in groups
+        if cue_payload.startswith("+"):
+            cue_payload = cue_payload[1:]
+
+        logger.info(f"Digico recalled cue: {cue_payload}")
+        pub.sendMessage(PyPubSubTopics.HANDLE_CUE_LOAD, cue=cue_payload)
+
+    def heartbeat(self) -> None:
+        with self.console_send_lock:
+            assert isinstance(self.console_client, udp_client.UDPClient)
+            self.console_client.send_message("/request_names", None)
 
     def _shutdown_servers(self) -> None:
         try:

@@ -12,7 +12,7 @@ from . import Console, Feature
 
 
 class Nadia(Console):
-    fixed_send_port: int = 28133  # pyright: ignore[reportIncompatibleVariableOverride]
+    fixed_send_port: int = 28133
     type = "Meyer Sound NADIA"
     supported_features = [Feature.CUE_LIST_PLAYER]
 

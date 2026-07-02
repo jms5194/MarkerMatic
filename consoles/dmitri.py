@@ -139,7 +139,7 @@ pythonosc.osc_message.OscMessage = CustomOscMessage
 
 
 class DMitri(Console):
-    fixed_send_port: int = 18033  # pyright: ignore[reportIncompatibleVariableOverride]
+    fixed_send_port: int = 18033
     type = "Meyer Sound D-Mitri"
     supported_features = [Feature.CUE_LIST_PLAYER]
 
