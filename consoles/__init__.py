@@ -2,7 +2,6 @@ from .console import Console, Feature
 from .behringerx32 import BehringerX32
 from .behringerxair import BehringerXAir
 from .digico import DiGiCo
-from .digico_livetrax import DiGiCo_LiveTrax
 from .studervista import StuderVista
 from .theatremix import TheatreMix
 from .yamaha import Yamaha
