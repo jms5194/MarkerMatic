@@ -31,7 +31,7 @@ jobs:
     name: Trigger CI Builds
     steps:
       - name: Trigger CI builds
-        run: 'curl -m 10 --retry 10 --silent --output /dev/null --show-error --fail --json ''{"branch":"main", "variables": {"ref":"${{ github.ref_name }}"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
+        run: 'curl -m 10 --retry 10 --silent --output /dev/null --show-error --fail --json ''{"branch": "main", "variables": {"ref": "${{ github.ref_name }}", "PUBLISH_RELEASE": "true"}}'' -X POST -H "Authorization: Bearer ${{ secrets.trigger_ci_build_token }}" "${{ secrets.trigger_ci_build_url }}"'
 
   build:
     # When create_release is finished
@@ -109,7 +109,7 @@ jobs:
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
         run: |
           cd dist
-      
+
           # Sign everything that needs signing from the inside out
           find "MarkerMatic.app" -type f \( \
             -iname "*.so" -o \
@@ -119,7 +119,7 @@ jobs:
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$f" 2>/dev/null || true
           done
-      
+
           # Sign nested bundles (.app, .framework, .xpc) from deepest to shallowest
           find "MarkerMatic.app" -type d \( \
             -name "*.app" -o \
@@ -130,12 +130,12 @@ jobs:
             codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
               --options runtime --timestamp --force "$bundle" 2>/dev/null || true
           done
-      
+
           # Sign the outer app bundle last
           codesign -s "${{secrets.APPLE_CERTIFICATE_NAME}}" \
             --entitlements ../packaging/entitlements.plist \
             --options runtime --timestamp --force "MarkerMatic.app"
-      
+
           codesign --verify --verbose=4 "MarkerMatic.app"
           chmod 755 MarkerMatic.app
 
