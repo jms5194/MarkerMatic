@@ -122,7 +122,7 @@ class Yamaha(Console):
         for scene_type in SCENE_TYPES:
             for cue_list in CUE_LISTS:
                 if line.startswith(f"NOTIFY {scene_type.notify} {cue_list}"):
-                    internal_id = line.rsplit(maxsplit=1)[1]
+                    internal_id = line.split()[3]
                     if (
                         internal_id == self._last_scene_internal_id
                         and datetime.now() <= self._last_scene_cooled
