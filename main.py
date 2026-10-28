@@ -933,6 +933,7 @@ class PrefsPanel(wx.Panel):
             settings.cue_list_player = int(
                 self.console_cue_list_player_control.GetValue()
             )
+            settings.macros_enabled = self.macros_enabled_checkbox.GetValue()
             settings.always_on_top = self.always_on_top_checkbox.GetValue()
             settings.ask_before_closing = self.ask_before_closing_checkbox.GetValue()
             settings.initial_mode = [

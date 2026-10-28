@@ -102,11 +102,13 @@ class DawConsoleBridge:
         allow_loading_while_playing,
         cue_list_player,
         initial_mode=settings.initial_mode,
-        macros_enabled=settings.macros_enabled,
+        macros_enabled: bool | None = None,
         ask_before_closing: Optional[bool] = None,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
+        if macros_enabled is None:
+            macros_enabled = settings.macros_enabled
         if ask_before_closing is None:
             ask_before_closing = settings.ask_before_closing
         logger.info("Updating configuration file")
