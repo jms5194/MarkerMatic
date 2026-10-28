@@ -970,7 +970,6 @@ class PrefsPanel(wx.Panel):
                 mmc_control_enabled=settings.mmc_control_enabled,
                 allow_loading_while_playing=settings.allow_loading_while_playing,
                 cue_list_player=settings.cue_list_player,
-                initial_mode=settings.initial_mode,
             )
             MainWindow.BridgeFunctions.shutdown_and_restart_servers()
             # Close the preferences window when update is pressed.

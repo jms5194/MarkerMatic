@@ -6,7 +6,7 @@ import os.path
 import platform
 import threading
 import time
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 import appdirs
 from configupdater import ConfigUpdater
@@ -17,7 +17,7 @@ import external_control.midi as ec_midi
 import external_control.osc as ec_osc
 from app_settings import settings
 from consoles import CONSOLES, Console
-from constants import PyPubSubTopics, TransportAction
+from constants import PlaybackState, PyPubSubTopics, TransportAction
 from daws import DAWS, Daw
 from logger_config import logger
 
@@ -101,12 +101,14 @@ class DawConsoleBridge:
         mmc_control_enabled,
         allow_loading_while_playing,
         cue_list_player,
-        initial_mode=settings.initial_mode,
+        initial_mode: PlaybackState | None = None,
         macros_enabled: bool | None = None,
-        ask_before_closing: Optional[bool] = None,
+        ask_before_closing: bool | None = None,
     ):
         "Update the configuration files with new values"
         # TODO: This can likely re-use the mapping that's used for reading the config file and loop through properties
+        if initial_mode is None:
+            initial_mode = settings.initial_mode
         if macros_enabled is None:
             macros_enabled = settings.macros_enabled
         if ask_before_closing is None:
