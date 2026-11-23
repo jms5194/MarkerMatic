@@ -96,7 +96,7 @@ jobs:
 
       - name: Download Sparkle automatic update framework
         run: |
-          rm -rf ./resources/Sparkle && mkdir ./resources/Sparkle && curl -L "https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz" | tar -xf - -C ./resources/Sparkle
+          rm -rf ./resources/Sparkle && mkdir ./resources/Sparkle && curl -L "https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-2.9.6.tar.xz" | tar -xf - -C ./resources/Sparkle
 
       - name: Build with py2app
         if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
